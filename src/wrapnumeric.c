@@ -40,7 +40,7 @@ luacwrap_BasicType regType_INT8 =
   INT8Wrapper_set
 };
 
-/-------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
 // implements set method
 static int UINT8Wrapper_set(luacwrap_BasicType* self, lua_State *L, PBYTE pData, int offset)
@@ -73,7 +73,7 @@ luacwrap_BasicType regType_UINT8 =
   UINT8Wrapper_set
 };
 
-/-------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
 // implements set method
 static int INT16Wrapper_set(luacwrap_BasicType* self, lua_State *L, PBYTE pData, int offset)
@@ -106,7 +106,7 @@ luacwrap_BasicType regType_INT16 =
   INT16Wrapper_set
 };
 
-/-------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
 // implements set method
 static int UINT16Wrapper_set(luacwrap_BasicType* self, lua_State *L, PBYTE pData, int offset)
@@ -139,7 +139,7 @@ luacwrap_BasicType regType_UINT16 =
   UINT16Wrapper_set
 };
 
-/-------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
 // implements set method
 static int INT32Wrapper_set(luacwrap_BasicType* self, lua_State *L, PBYTE pData, int offset)
@@ -172,7 +172,7 @@ luacwrap_BasicType regType_INT32 =
   INT32Wrapper_set
 };
 
-/-------------------------------------------------------------------------
+//------------------------------------------------------------------------
 
 // implements set method
 static int UINT32Wrapper_set(luacwrap_BasicType* self, lua_State *L, PBYTE pData, int offset)
