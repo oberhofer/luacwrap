@@ -1,0 +1,6 @@
+LIBRARY luacwrap
+EXPORTS
+  luaopen_luacwrap
+  luacwrap_registerbasictype
+  luacwrap_registertype
+  luacwrap_checktype

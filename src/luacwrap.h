@@ -1,0 +1,244 @@
+//////////////////////////////////////////////////////////////////////////
+// LuaCwrap - lua <-> C 
+// Copyright (C) 2011 Klaus Oberhofer. See Copyright Notice in luacwrap.h
+//
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  Type descriptor
+
+    contains
+      - type class (basic, struct/union, array, buffer)
+      - for basic types
+          size in bytes
+          getter
+          setter
+      - for record (struct/union) types
+          size in bytes
+          array of member descriptors
+      - for array types
+          number of elements
+          element type
+      - for buffer type
+          size in bytes
+
+      +-----------------+<------------------------------- userdata
+      | TypeDescriptor  |                                   metatable
+      |                 |                                     [new]         -> Type_new
+      +-----------------+                                     [attach]      -> Type_attach
+
+    Type:new
+        - creates udata with size of complex type
+        - attaches boxed metatable
+        - adds type descriptor to environment[$desc]
+
+    Type:attach(to lightuserdata)
+        - creates embedded object
+        - .outer points to lightuserdata
+        - .offset = 0
+
+  Boxed object
+
+      userdata
+      +-----------------+<------------------- userdata
+      |                 |                       metatable
+      |                 |                         [__index]     -> Boxed_index
+      +-----------------+                         [__newindex]  -> Boxed_newindex
+      | Embedded object |                         [__tostring]  -> Boxed_tostring
+      |                 |                         [__len]       -> Boxed_len
+      +-----------------+                       environment
+      |                 |                         [$desc]       -> typedescriptor
+      |                 |
+      +-----------------+
+
+  Embedded object
+
+      userdata
+      +-----------------+<----,     +--------------+<---- userdata
+      |                 |     '-----| outer        |        metatable
+      |                 |           +--------------+          [__index]     -> Embedded_index
+      +-----------------+<----------| offset       |          [__newindex]  -> Embedded_newindex
+      | Embedded object |           +--------------+          [__tostring]  -> Embedded_tostring
+      |                 |                                     [__len]       -> Embedded_len
+      +-----------------+                                   environment
+      |                 |                                     [$desc]       -> typedescriptor
+      |                 |
+      +-----------------+
+
+
+*/////////////////////////////////////////////////////////////////////////
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include <lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
+#ifdef __cplusplus
+}
+#endif
+
+typedef unsigned char   BYTE;
+typedef BYTE*           PBYTE;
+
+typedef signed char     INT8;
+typedef unsigned char   UINT8;
+
+typedef signed short    INT16;
+typedef unsigned short  UINT16;
+
+typedef signed int      INT32;
+typedef unsigned int    UINT32;
+
+
+#define LUACWRAP_TC_BASIC       0
+#define LUACWRAP_TC_RECORD      1
+#define LUACWRAP_TC_ARRAY       2
+#define LUACWRAP_TC_BUFFER      3
+
+//
+// type descriptor header
+//
+struct luacwrap_Type
+{
+  unsigned int              typeclass;  // type class
+  const char*               name;       // name of type
+};
+
+//
+// type descriptor for basic types
+//
+struct luacwrap_BasicType
+{
+  struct luacwrap_Type      hdr;
+  unsigned int              size;       // size of type
+
+  int (*getWrapper )(struct luacwrap_BasicType* self, lua_State* L, PBYTE pData, int offset);            // get wrapper
+  int (*setWrapper )(struct luacwrap_BasicType* self, lua_State* L, PBYTE pData, int offset);            // set wrapper
+};
+
+//
+// type descriptor for record types (struct/union)
+//
+struct luacwrap_ArrayType
+{
+  struct luacwrap_Type      hdr;
+  unsigned int              elemcount;  // size of array 
+  unsigned int              elemsize;   // size of one element
+  const char*               elemtype;   // valid only for arrays
+};
+
+//
+// member descriptor to describe record members
+// (use arrays terminated with the last entry member name == NULL)
+//
+struct luacwrap_RecordMember
+{
+  const char*               name;       // name to access
+  unsigned int              offset;     // offset within struct
+  const char*               typname;    // member type name
+};
+
+//
+// type descriptor for array types
+//
+struct luacwrap_RecordType
+{
+  struct luacwrap_Type      hdr;
+  unsigned int              size;             // size of type
+  struct luacwrap_RecordMember*    members;   // array of member descriptors
+};
+
+//
+// type descriptor for buffer types
+//
+struct luacwrap_BufferType
+{
+  struct luacwrap_Type      hdr;
+  unsigned int              size;       // size of type
+};
+
+
+//
+// reference to a managed or embedded object
+//
+struct luacwrap_EmbeddedObject
+{
+  unsigned int  outer;      // reference to outer complex type object
+                            //  (if != LUA_REFNIL)
+  unsigned int  offset;     // offset within outer complex type object
+};
+
+//
+// typedef names for the above structs
+//
+typedef struct luacwrap_Type            luacwrap_Type;
+typedef struct luacwrap_BasicType       luacwrap_BasicType;
+typedef struct luacwrap_RecordMember    luacwrap_RecordMember;
+typedef struct luacwrap_RecordType      luacwrap_RecordType;
+typedef struct luacwrap_ArrayType       luacwrap_ArrayType;
+typedef struct luacwrap_BufferType      luacwrap_BufferType;
+typedef struct luacwrap_EmbeddedObject  luacwrap_EmbeddedObject;
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  LUACWRAP_DEFINESTRUCT
+
+  helper macr to create struct descriptors
+
+*/////////////////////////////////////////////////////////////////////////
+#define LUACWRAP_DEFINESTRUCT(lib, name)                \
+luacwrap_RecordType regType_##name =                    \
+{                                                       \
+  {                                                     \
+    LUACWRAP_TC_RECORD,                                 \
+    #name                                               \
+  },                                                    \
+  sizeof(name),                                         \
+  s_member##name                                        \
+};
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  LUACWRAP_DEFINEARRAY
+
+  helper macro to create array descriptors
+
+*/////////////////////////////////////////////////////////////////////////
+#define LUACWRAP_DEFINEARRAY(lib, elemtype, nelems)     \
+luacwrap_ArrayType regType_##elemtype##_##nelems =      \
+{                                                       \
+  {                                                     \
+    LUACWRAP_TC_ARRAY,                                  \
+    #elemtype"_"#nelems                                 \
+  },                                                    \
+  sizeof(elemtype),                                     \
+  nelems,                                               \
+  #elemtype                                             \
+};
+
+
+//
+// used to register a basic type descriptor in the basic type table
+//
+extern int luacwrap_registerbasictype(lua_State* L, luacwrap_BasicType* desc);
+
+//
+// register a type descriptor in the given (namespace) table
+//
+extern int luacwrap_registertype( lua_State*            L
+                                , int                   nsidx
+                                , luacwrap_Type*        desc);
+
+//
+// check a userdata type descriptor against a given type descriptor
+//
+extern void* luacwrap_checktype   ( lua_State*          L
+                                  , int                 ud
+                                  , luacwrap_Type*      desc);
+
+

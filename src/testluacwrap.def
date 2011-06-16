@@ -1,0 +1,3 @@
+LIBRARY testluacwrap
+EXPORTS
+  luaopen_testluacwrap
