@@ -57,6 +57,10 @@ and execute
 
     sudo make install
 
+This creates the necessary libs/links within /usr/local/lib and /usr/local/lib/lua/5.1 to
+enable LuaCwrap to be3 used as a shared library and a lua module.
+
+
 ## Windows
 
 ### Prerequisites
@@ -82,10 +86,18 @@ To execute the unittest, do
 
 To install luacwrap into Lua for Windows copy the file luacwrap.dll to the Lua for Windows clibs directory.
 
-
 # Usage
 
-## Import LuaCwrap
+## Dual interface
+
+The LuaCwrap exports several functions. One of them the luaopen_luacwrap
+function enables that LuaCwrap could be used from standalone lua scripts.
+The other functions could be bound to by lua C modules or executables
+to be able to declare wrapped structs within C.
+
+## Lua-API
+
+### Import LuaCwrap
 
 Importing LuaCwrap is only necessary if you want to declare your own types via the Lua-API.
 In this case use the followig line:
@@ -96,12 +108,7 @@ C modules which want to provide wrappers usually create their own namespace tabl
 For an example see the source code of the `testluacwrap` module, which is provided with this package 
 for unittesting.
 
-## Registering type descriptors
-
-A valid registered type desriptor is necessary to create data type instances. 
-In LuaCwrap you can register type descriptors via a Lua or a C API.
-
-### Lua-API
+### Registering type descriptors
 
 #### Register array types
 
@@ -115,8 +122,14 @@ In LuaCwrap you can register type descriptors via a Lua or a C API.
 
     type, name = luacwrap.registerbuffertype(name, size)
 
-    
-### C-API
+### Create/Attach instances
+
+Every registered type descriptor has two methods `new` and `attach` which could be used to
+create new instances or create a wrapper around existing userdata.
+
+## C-API
+
+### Registering type descriptors
 
 #### Register array types
 
@@ -165,17 +178,12 @@ marshalling. Therefore registering basic types is only possible via the C API.
 Use the `luacwrap_registerbasictype` function and see the source of LuaCwrap
 for usage examples.
     
-## Create/Attach instances
+### Create/Attach instances
 
-### Lua-API
-
-Every registered type descriptor has two methods `new` and `attach` which could be used to
-create new instances or create a wrapper around existing userdata.
-
-### C-API
-
+This is currently not implemented.
 
 # Internals
+
 
 ## Module table _M
 
