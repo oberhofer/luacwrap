@@ -3,5 +3,6 @@
 #
 include ../config
 
-doc: markdown.lua luacwrap.md
+manual:
+	echo "hello"
 	lua markdown.lua --style lua.css --title luacwrap luacwrap.md 

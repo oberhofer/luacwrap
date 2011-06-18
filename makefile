@@ -8,10 +8,10 @@ include config
 #
 # INSTALL_LUACWRAP_SHARE=$(INSTALL_TOP_SHARE)/luacwrap
 
-all clean:
+all clean test:
 	cd src; $(MAKE) $@
 
-doc:
+manual:
 	cd doc; $(MAKE) $@
 
 #------
