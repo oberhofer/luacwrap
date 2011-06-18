@@ -24,6 +24,65 @@ LuaCwrap
  * maintains lifetime of lua objects which had been assigned to wrapped pointers
  * supports C and Lua API
 
+# Installation
+
+First download the source code via git 
+
+    git clone git://github.com/oberhofer/luacwrap.git master
+
+or unpack the package you got via the download option
+
+## Linux
+
+### Prerequisites
+
+Install Lua and the development files we depend on
+
+    sudo apt-get install liblua5.1-0 liblua5.1-0-dev
+
+### Build from source
+
+* Start a console and change to the directory where the luacwrap source is located
+* Start make
+    make
+* This creates two shared libraries (luacwrap.1.0.0.so and testluacwrap.1.0.0.so) within ./src
+  The necessary links needed to execute the unittest.lua within ./src are also created.
+* You can execute the unittests via
+    make test
+
+### Installation
+
+Edit the makefile to set the correct destination directory for the library files
+and execute
+
+    sudo make install
+
+## Windows
+
+### Prerequisites
+
+Install Lua for Windows from http://luaforwindows.googlecode.com/
+
+### Build from source
+
+* Edit ./etc/msvc.bat and set the correct path to the Lua for Windows header and library files.
+* Open a Visual Studio .NET Command Prompt
+* Change path to the luacwrap root directory
+* Execute
+
+    etc\msvc.bat
+
+As a result you should have now the files luacwrap.dll and testluacwrap.dll within your source directory.
+To execute the unittest, do
+
+    cd src
+    lua unittest.lua
+
+### Installation
+
+To install luacwrap into Lua for Windows copy the file luacwrap.dll to the Lua for Windows clibs directory.
+
+
 # Usage
 
 ## Import LuaCwrap

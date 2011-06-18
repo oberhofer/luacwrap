@@ -35,6 +35,73 @@ So if you use 'attach' be sure to know what you are doing.</p>
     <li>supports C and Lua API</li>
 </ul>
 
+<h1>Installation</h1>
+
+<p>First download the source code via git </p>
+
+<div class="code">git clone git://github.com/oberhofer/luacwrap.git master
+</div>
+
+<p>or unpack the package you got via the download option</p>
+
+<h2>Linux</h2>
+
+<h3>Prerequisites</h3>
+
+<p>Install Lua and the development files we depend on</p>
+
+<div class="code">sudo apt-get install liblua5.1-0 liblua5.1-0-dev
+</div>
+
+<h3>Build from source</h3>
+
+<ul>
+    <li>Start a console and change to the directory where the luacwrap source is located</li>
+    <li>Start make
+    make</li>
+    <li>This creates two shared libraries (luacwrap.1.0.0.so and testluacwrap.1.0.0.so) within ./src
+    The necessary links needed to execute the unittest.lua within ./src are also created.</li>
+    <li>You can execute the unittests via
+    make test</li>
+</ul>
+
+<h3>Installation</h3>
+
+<p>Edit the makefile to set the correct destination directory for the library files
+and execute</p>
+
+<div class="code">sudo make install
+</div>
+
+<h2>Windows</h2>
+
+<h3>Prerequisites</h3>
+
+<p>Install Lua for Windows from http://luaforwindows.googlecode.com/</p>
+
+<h3>Build from source</h3>
+
+<ul>
+    <li><p>Edit ./etc/msvc.bat and set the correct path to the Lua for Windows header and library files.</p></li>
+    <li><p>Open a Visual Studio .NET Command Prompt</p></li>
+    <li><p>Change path to the luacwrap root directory</p></li>
+    <li><p>Execute</p>
+    
+    <p>etc\msvc.bat</p></li>
+</ul>
+
+<p>As a result you should have now the files luacwrap.dll and testluacwrap.dll within your source directory.
+To execute the unittest, do</p>
+
+<div class="code">cd src
+lua unittest.lua
+</div>
+
+<h3>Installation</h3>
+
+<p>To install luacwrap into Lua for Windows copy the file luacwrap.dll to the Lua for Windows clibs directory.</p>
+
+
 <h1>Usage</h1>
 
 <h2>Import LuaCwrap</h2>
