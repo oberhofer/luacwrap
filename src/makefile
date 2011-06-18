@@ -47,6 +47,12 @@ wrapnumeric.o: wrapnumeric.c wrapnumeric.h luaaux.h
 testluacwrap.o: testluacwrap.c luaaux.h
 
 #------
+# execute unittest
+#
+test:
+	lua unittest.lua
+
+#------
 # cleanup dynamic libraries and links
 #
 clean:
