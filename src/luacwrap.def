@@ -5,3 +5,4 @@ EXPORTS
   luacwrap_registertype
   luacwrap_checktype
   luacwrap_defuintconstants
+  luacwrap_pushtypedptr

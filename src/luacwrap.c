@@ -1142,10 +1142,30 @@ void* luacwrap_checktype   ( lua_State*          L
   return result;
 }
 
+
 //////////////////////////////////////////////////////////////////////////
 /**
 
-  creates the new() constructor method for boxed types.
+  push a typed pointer to a not garbage collected object
+
+*////////////////////////////////////////////////////////////////////////
+int luacwrap_pushtypedptr(lua_State* L, luacwrap_Type* desc, void* pObj)
+{
+  int result = 0;
+  LUASTACK_SET(L);
+  
+  lua_pushlightuserdata(L, pObj);
+  result = getEmbedded(L, abs_index(L, -1), 0, desc->name);
+  lua_remove(L, -2);
+  
+  LUASTACK_CLEAN(L, result);
+  return result;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  creates the attach() constructor method for boxed types.
 
   userdata
   +-----------------+<------------------- userdata
@@ -1194,7 +1214,7 @@ int luacwrap_type_attach(lua_State* L)
     case LUA_TNUMBER:
       {
         lua_pushlightuserdata(L, (void*)lua_tointeger(L, 2));
-        result = getEmbedded(L, -1, 0, desc->name);
+        result = getEmbedded(L, abs_index(L, -1), 0, desc->name);
         lua_remove(L, -2);
       }
       break;

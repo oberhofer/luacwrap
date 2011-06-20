@@ -44,4 +44,26 @@ print(struct)
 print("--> internal print")
 print(testluacwrap.printTESTSTRUCT(struct))
 
+-- test attach
+function myfunc(struct)
+  print("within myfunc")
+  print(struct)
+  
+  local wrap = TESTSTRUCT:attach(struct)
+  print(wrap)
+end
+testluacwrap.callwithTESTSTRUCT(myfunc)
+
+function printtable(t)
+  for k,v in pairs(t) do
+    print("  ", k, v)
+  end
+end
+
+-- test wrapped stack based objects
+function wrapfunc(wrap)
+  print(wrap)
+end
+testluacwrap.callwithwrappedTESTSTRUCT(wrapfunc)
+
 print("--> all checks passed")

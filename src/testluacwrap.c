@@ -112,7 +112,7 @@ luacwrap_ArrayType regType_INT32_4 =
   @result returns lua string with TESTSTRUCT dump
 
 */////////////////////////////////////////////////////////////////////////
-int luacwrap_printTESTSTRUCT(lua_State* L)
+int printTESTSTRUCT(lua_State* L)
 {
   TESTSTRUCT* ud;
   char szTemp[2048];
@@ -140,9 +140,87 @@ int luacwrap_printTESTSTRUCT(lua_State* L)
   return 1;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  function which pushes a pointer to TESTSTRUCT as light user data 
+  (to test attach method)
+
+  @param[in]  L  pointer lua state
+  
+  @result pointer to TESTSTRUCT as light user data
+
+*/////////////////////////////////////////////////////////////////////////
+int callwithTESTSTRUCT(lua_State* L)
+{
+  TESTSTRUCT ud = { 0 };
+  
+  LUASTACK_SET(L);
+  
+  ud.u8  =   8;
+  ud.i8  =  -8;
+  ud.u16 =  16;
+  ud.i16 = -16;
+  ud.u32 =  32;
+  ud.i32 = -32;
+  ud.ptr =  "a ptr";
+
+  // expects a function as parameter
+  if (lua_isfunction(L, -1))
+  {
+    lua_pushvalue(L, -1);
+    lua_pushlightuserdata(L, &ud);
+    
+    lua_call(L, 1, 0);
+  }
+  
+  LUASTACK_CLEAN(L, 0);
+  return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  function which pushes a wrapped pointer to TESTSTRUCT
+  (same result after using attach method on unwrapped pointer)
+
+  @param[in]  L  pointer lua state
+  
+  @result wrapped TESTSTRUCT pointer
+
+*/////////////////////////////////////////////////////////////////////////
+int callwithwrappedTESTSTRUCT(lua_State* L)
+{
+  TESTSTRUCT ud = { 0 };
+  
+  LUASTACK_SET(L);
+  
+  ud.u8  =   8;
+  ud.i8  =  -8;
+  ud.u16 =  16;
+  ud.i16 = -16;
+  ud.u32 =  32;
+  ud.i32 = -32;
+  ud.ptr = "a ptr, too";
+
+  printf("callwithwrappedTESTSTRUCT %p\n", &ud);
+  
+  // expects a function as parameter
+  if (lua_isfunction(L, -1))
+  {
+    lua_pushvalue(L, -1);
+    luacwrap_pushtypedptr(L, &regType_TESTSTRUCT.hdr, &ud);
+    lua_call(L, 1, 0);
+  }
+  
+  LUASTACK_CLEAN(L, 0);
+  return 0;
+}
 
 static const luaL_reg testluacwrap_functions[ ] = {
-  { "printTESTSTRUCT"   , luacwrap_printTESTSTRUCT },
+  { "printTESTSTRUCT"   , printTESTSTRUCT },
+  { "callwithTESTSTRUCT", callwithTESTSTRUCT },
+  { "callwithwrappedTESTSTRUCT", callwithwrappedTESTSTRUCT },
   { NULL, NULL }
 };
 
