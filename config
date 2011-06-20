@@ -7,36 +7,33 @@
 #
 EXT=so
 
-LUACWRAP_MAJOR=1
+LUACWRAP_MAJOR=0
 LUACWRAP_VERSION=$(LUACWRAP_MAJOR).0.0
 TESTLUACWRAP_VERSION=$(LUACWRAP_MAJOR).0.0
-LUACWRAP_SO=luacwrap.$(EXT).$(LUACWRAP_VERSION) 
-TESTLUACWRAP_SO=testluacwrap.$(EXT).$(TESTLUACWRAP_VERSION)
+
+LUACWRAP_LIBNAME=liblua5.1-luacwrap
+LUACWRAP_MNAME=$(LUACWRAP_LIBNAME).$(EXT).$(LUACWRAP_MAJOR)
+LUACWRAP_VNAME=$(LUACWRAP_LIBNAME).$(EXT).$(LUACWRAP_VERSION) 
+
+TESTLUACWRAP_LIBNAME=testluacwrap
+TESTLUACWRAP_MNAME=$(TESTLUACWRAP_LIBNAME).$(EXT).$(TESTLUACWRAP_MAJOR)
 
 #------
 # Lua includes and libraries
 #
-#LUAINC=-I/usr/local/include/lua50
-#LUAINC=-I/usr/local/include/lua5.1
-#LUAINC=-Ilua-5.1.1/src
-LUAINC=-I/usr/include/lua5.1
-
-#------
-# Compat-5.1 directory
-#
-#COMPAT=compat-5.1r5
+LUA_INCDIR=-I/usr/include/lua5.1
 
 #------
 # Top of your Lua installation
 # Relative paths will be inside the src tree
 #
-#INSTALL_TOP_SHARE=/usr/local/share/lua/5.0
-#INSTALL_TOP_LIB=/usr/local/lib/lua/5.0
-INSTALL_TOP_SHARE=/usr/local/share/lua/5.1
-INSTALL_TOP_LIB=/usr/local/lib/lua/5.1
+INSTALL_TOP_SHARE=/usr/local/share
+INSTALL_TOP_LIB=/usr/local/lib
+INSTALL_LUA_LIB=$(INSTALL_TOP_LIB)/lua/5.1
 
 INSTALL_DATA=cp
 INSTALL_EXEC=cp
+INSTALL_LINK=ln -f
 
 #------
 # Compiler and linker settings
@@ -54,7 +51,7 @@ INSTALL_EXEC=cp
 CC=gcc
 DEF=
 # CFLAGS= $(LUAINC) $(DEF) -pedantic -Wall -O2 -fpic
-CFLAGS= $(LUAINC) $(DEF) -Wall -O2 -fpic
+CFLAGS= $(LUA_INCDIR) $(DEF) -Wall -O2 -fpic
 LDFLAGS=-O -shared -fpic
 LD=gcc 
 

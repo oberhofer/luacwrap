@@ -19,8 +19,25 @@ manual:
 #
 install: all
 	cd src; mkdir -p $(INSTALL_TOP_LIB)
-	cd src; $(INSTALL_EXEC) $(LUACWRAP_SO) $(INSTALL_TOP_LIB)/luacwrap.$(EXT)
-	cd src; $(INSTALL_EXEC) $(TESTLUACWRAP_SO) $(INSTALL_TOP_LIB)/testluacwrap.$(EXT)
+	# install library
+	cd src; $(INSTALL_EXEC) $(LUACWRAP_VNAME) $(INSTALL_TOP_LIB)/$(LUACWRAP_VNAME)
+	# enable runtime binding via soname
+	$(INSTALL_LINK) $(INSTALL_TOP_LIB)/$(LUACWRAP_VNAME) $(INSTALL_TOP_LIB)/$(LUACWRAP_MNAME)
+	# enable -llua5.1-luacwrap for gcc
+	$(INSTALL_LINK) $(INSTALL_TOP_LIB)/$(LUACWRAP_VNAME) $(INSTALL_TOP_LIB)/$(LUACWRAP_LIBNAME).$(EXT)
+	# enable require("luacwrap") within lua scripts
+	$(INSTALL_LINK) $(INSTALL_TOP_LIB)/$(LUACWRAP_VNAME) $(INSTALL_LUA_LIB)/luacwrap.$(EXT)
+	# update linker cache
+	sudo ldconfig
+
+#------
+# Install LuaCwrap according to recommendation
+#
+uninstall:
+	rm $(INSTALL_TOP_LIB)/$(LUACWRAP_VNAME)
+	rm $(INSTALL_TOP_LIB)/$(LUACWRAP_MNAME)
+	rm $(INSTALL_TOP_LIB)/$(LUACWRAP_LIBNAME).$(EXT)
+	rm $(INSTALL_LUA_LIB)/luacwrap.$(EXT)
 
 #------
 # End of makefile

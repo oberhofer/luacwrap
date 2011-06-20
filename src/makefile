@@ -21,22 +21,25 @@ TESTLUACWRAP_OBJS:=\
 #------
 # all target
 #
-all: $(LUACWRAP_SO) $(TESTLUACWRAP_SO) 
+all: $(LUACWRAP_VNAME)
 
 #------
 # creates luacwrap dynamic library
 #
-$(LUACWRAP_SO): $(LUACWRAP_OBJS)
-	$(LD) $(LDFLAGS) -Wl,-soname,luacwrap.$(EXT).$(LUACWRAP_MAJOR) -o $@ $(LUACWRAP_OBJS)
-	ln $(LUACWRAP_SO) luacwrap.$(EXT).$(LUACWRAP_MAJOR)
-	ln $(LUACWRAP_SO) luacwrap.$(EXT)
+$(LUACWRAP_VNAME): $(LUACWRAP_OBJS)
+	$(LD) $(LDFLAGS) -Wl,-soname,$(LUACWRAP_MNAME) -o $@ $(LUACWRAP_OBJS)
 
 #------
 # creates testluacwrap dynamic library
 #
-$(TESTLUACWRAP_SO): $(TESTLUACWRAP_OBJS)
-	$(LD) $(LDFLAGS) -Wl,-soname,testluacwrap.$(EXT).$(LUACWRAP_MAJOR) -L. -Wl,-rpath,`pwd` -o $@ $(TESTLUACWRAP_OBJS) $(LUACWRAP_SO)
-	ln $(TESTLUACWRAP_SO) testluacwrap.$(EXT)
+$(TESTLUACWRAP_LIBNAME).$(EXT): $(TESTLUACWRAP_OBJS)
+	$(LD) $(LDFLAGS) -Wl,-soname,$(TESTLUACWRAP_MNAME) -L$(INSTALL_TOP_LIB) -o $@ $(TESTLUACWRAP_OBJS) -llua5.1-luacwrap
+
+#------
+# build/execute test
+#
+test: $(TESTLUACWRAP_LIBNAME).$(EXT)
+	lua unittest.lua
 
 #------
 # List of dependencies
@@ -47,20 +50,12 @@ wrapnumeric.o: wrapnumeric.c wrapnumeric.h luaaux.h
 testluacwrap.o: testluacwrap.c luaaux.h
 
 #------
-# execute unittest
-#
-test:
-	lua unittest.lua
-
-#------
 # cleanup dynamic libraries and links
 #
 clean:
 	rm -f testluacwrap.$(EXT)
-	rm -f luacwrap.$(EXT).$(LUACWRAP_MAJOR)
-	rm -f luacwrap.$(EXT)
-	rm -f $(LUACWRAP_SO) $(LUACWRAP_OBJS) 
-	rm -f $(TESTLUACWRAP_SO) $(TESTLUACWRAP_OBJS) 
+	rm -f $(LUACWRAP_VNAME) 
+	rm -f $(LUACWRAP_OBJS) $(TESTLUACWRAP_OBJS) 
 
 #------
 # End of makefile configuration
