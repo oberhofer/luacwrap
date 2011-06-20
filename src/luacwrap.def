@@ -4,3 +4,4 @@ EXPORTS
   luacwrap_registerbasictype
   luacwrap_registertype
   luacwrap_checktype
+  luacwrap_defuintconstants
