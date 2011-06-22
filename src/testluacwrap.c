@@ -236,14 +236,10 @@ int luaopen_testluacwrap(lua_State *L)
 {
   LUASTACK_SET(L);
 
-  // luacwrap = require("luacwrap")
+  // require("luacwrap")
   lua_getglobal(L, "require");
   lua_pushstring(L, "luacwrap");
-  lua_call(L, 1, 1);
-  // lua_setfield(L, LUA_ENVIRONINDEX, "luacwrap");
-
-  // we do not need the package table
-  lua_pop(L, 1);
+  lua_call(L, 1, 0);
 
   // register package functions
   lua_newtable(L);
