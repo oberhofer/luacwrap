@@ -1,0 +1,7 @@
+0.1.0
+
+* first public version
+* added luacwrap_pushtypedptr() function to push typed pointers 
+  to (non garbage collected) objects on the lua stack
+* added helper functions to add unsigned constants to a lua table
+  (for wrapping enums)
