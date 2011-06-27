@@ -1,11 +1,8 @@
-LuaCWrap
-========
+# Introduction
 
 LuaCwrap is a wrapper for C datatypes written in pure C. It utilizes metadata (aka type descriptors) to describe the layout and names of structures, unions, arrays and buffers.
 
-
-Features
-========
+# Features
 
  * supports struct and union types
  * supports array types
@@ -15,15 +12,11 @@ Features
  * maintains lifetime of lua objects which had been assigned to wrapped pointers
  * supports C and Lua API
 
-
-Documentation
-=============
+# Documentation
 
 see luacwrap.html within the doc directory
 
-
-License
-=======
+# License
 
 LuaCwrap is licensed under the terms of the MIT license reproduced below.
 This means that LuaCwrap is free software and can be used for both academic
