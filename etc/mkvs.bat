@@ -15,8 +15,8 @@
 cd src
 
 @rem create luacwrap.dll
-%MYCOMPILE% luaaux.c luacwrap.c wrapnumeric.c testluacwrap.c
-%MYLINK% /DLL /out:luacwrap.dll /DEF:luacwrap.def luaaux.obj luacwrap.obj wrapnumeric.obj lua5.1.lib
+%MYCOMPILE% luaaux.c luacwrap.c wrapnumeric.c testluacwrap.c defconstants.c
+%MYLINK% /DLL /out:luacwrap.dll /DEF:luacwrap.def luaaux.obj luacwrap.obj wrapnumeric.obj defconstants.obj lua5.1.lib
 if exist luacwrap.dll.manifest^
   %MYMT% -manifest luacwrap.dll.manifest -outputresource:luacwrap.dll;2
   

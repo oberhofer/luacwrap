@@ -73,6 +73,10 @@ and execute</p>
 <div class="code">sudo make install
 </div>
 
+<p>This creates the necessary libs/links within /usr/local/lib and /usr/local/lib/lua/5.1 to
+enable LuaCwrap to be3 used as a shared library and a lua module.</p>
+
+
 <h2>Windows</h2>
 
 <h3>Prerequisites</h3>
@@ -101,10 +105,18 @@ lua unittest.lua
 
 <p>To install luacwrap into Lua for Windows copy the file luacwrap.dll to the Lua for Windows clibs directory.</p>
 
-
 <h1>Usage</h1>
 
-<h2>Import LuaCwrap</h2>
+<h2>Dual interface</h2>
+
+<p>The LuaCwrap exports several functions. One of them the luaopen_luacwrap
+function enables that LuaCwrap could be used from standalone lua scripts.
+The other functions could be bound to by lua C modules or executables
+to be able to declare wrapped structs within C.</p>
+
+<h2>Lua-API</h2>
+
+<h3>Import LuaCwrap</h3>
 
 <p>Importing LuaCwrap is only necessary if you want to declare your own types via the Lua-API.
 In this case use the followig line:</p>
@@ -116,12 +128,7 @@ In this case use the followig line:</p>
 For an example see the source code of the <code>testluacwrap</code> module, which is provided with this package 
 for unittesting.</p>
 
-<h2>Registering type descriptors</h2>
-
-<p>A valid registered type desriptor is necessary to create data type instances. 
-In LuaCwrap you can register type descriptors via a Lua or a C API.</p>
-
-<h3>Lua-API</h3>
+<h3>Registering type descriptors</h3>
 
 <h4>Register array types</h4>
 
@@ -138,8 +145,18 @@ In LuaCwrap you can register type descriptors via a Lua or a C API.</p>
 <div class="code">type, name = luacwrap.registerbuffertype(name, size)
 </div>
 
+<h3>Create/Attach instances</h3>
 
-<h3>C-API</h3>
+<p>Every registered type descriptor has two methods <code>new</code> and <code>attach</code> which could be used to
+create new instances or create a wrapper around existing userdata.</p>
+
+<div class="code">local struct = TESTSTRUCT:new()           -- create new garbage collected struct
+local wrap = TESTSTRUCT:attach(udata)     -- attach descriptor to (light) user data
+</div>
+
+<h2>C-API</h2>
+
+<h3>Registering type descriptors</h3>
 
 <h4>Register array types</h4>
 
@@ -191,17 +208,34 @@ marshalling. Therefore registering basic types is only possible via the C API.
 Use the <code>luacwrap_registerbasictype</code> function and see the source of LuaCwrap
 for usage examples.</p>
 
-<h2>Create/Attach instances</h2>
+<h3>Create/Attach instances</h3>
 
-<h3>Lua-API</h3>
+<p>From the C API in most cases you push wrappers to static instances to call functions
+with parameters. </p>
 
-<p>Every registered type descriptor has two methods <code>new</code> and <code>attach</code> which could be used to
-create new instances or create a wrapper around existing userdata.</p>
+<p>Attention: Wrappers are alive during the function call and not beyond.
+It's definitely not a good idea to store them within the called function for later use.</p>
 
-<h3>C-API</h3>
+<div class="code">// static instance
+TESTSTRUCT ud = { 0 };
+
+// fill struct with data
+ud.u8  =   8;
+ud.i8  =  -8;
+...
+
+// call "myfunction" with wrapped object as parameter 1
+lua_getglobal(L, "myfunction");
+
+// push wrapper
+luacwrap_pushtypedptr(L, &amp;regType_TESTSTRUCT.hdr, &amp;ud);
+
+lua_call(L, 1, 0);
+</div>
 
 
 <h1>Internals</h1>
+
 
 <h2>Module table _M</h2>
 
@@ -228,6 +262,7 @@ These are</p>
     <li>$i32, $u32 (signed/unsigned long)</li>
     <li>$flt, $dbl (float, double)</li>
     <li>$ptr       (pointer types)</li>
+    <li>$ref       (reference type utilizing the lua reference mechanism)</li>
 </ul>
 
 <p>Buffers are registered within the type table, too. The name of buffer types is derived

@@ -33,26 +33,18 @@ assert(struct.intarray[4] == 40)
 
 -- check sizes
 print("--> check __len")
--- assert(#struct == 80)       -- depends on packing, could be 72 
+-- assert(#struct == 80)       -- depends on packing, could be 72
 print("struct size: ", #struct)
 assert(#struct.intarray == 4)
 assert(#struct.chararray == 32)
 
 print("--> print")
 print(struct)
+print("struct.__ptr", struct.__ptr)
+print("struct.inner.__ptr", struct.inner.__ptr)
 
 print("--> internal print")
 print(testluacwrap.printTESTSTRUCT(struct))
-
--- test attach
-function myfunc(struct)
-  print("within myfunc")
-  print(struct)
-  
-  local wrap = TESTSTRUCT:attach(struct)
-  print(wrap)
-end
-testluacwrap.callwithTESTSTRUCT(myfunc)
 
 function printtable(t)
   for k,v in pairs(t) do
@@ -60,10 +52,39 @@ function printtable(t)
   end
 end
 
+print("--> test attach")
+-- test attach
+function myfunc(struct)
+  print("within myfunc")
+  print(struct)
+
+  local wrap = TESTSTRUCT:attach(struct)
+  print(wrap)
+  printtable(debug.getfenv(wrap))
+
+  print("wrap.__ptr", wrap.__ptr)
+  print(testluacwrap.printTESTSTRUCT(wrap))
+end
+testluacwrap.callwithTESTSTRUCT(myfunc)
+
+
+print("--> callwithwrappedTESTSTRUCT")
 -- test wrapped stack based objects
 function wrapfunc(wrap)
   print(wrap)
 end
 testluacwrap.callwithwrappedTESTSTRUCT(wrapfunc)
+
+
+print("--> callwithRefType")
+-- test wrapped stack based objects
+function wrapfunc(wrap)
+  print(wrap)
+
+  print("wrap.__ptr", wrap.__ptr)
+
+  print(testluacwrap.printTESTSTRUCT(wrap))
+end
+testluacwrap.callwithRefType(wrapfunc, "callwithRefType")
 
 print("--> all checks passed")

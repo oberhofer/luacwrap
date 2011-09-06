@@ -127,6 +127,9 @@ for unittesting.
 Every registered type descriptor has two methods `new` and `attach` which could be used to
 create new instances or create a wrapper around existing userdata.
 
+    local struct = TESTSTRUCT:new()           -- create new garbage collected struct
+    local wrap = TESTSTRUCT:attach(udata)     -- attach descriptor to (light) user data
+
 ## C-API
 
 ### Registering type descriptors
@@ -177,10 +180,31 @@ For these types you have to specify appropriate get and set callbacks which hand
 marshalling. Therefore registering basic types is only possible via the C API.
 Use the `luacwrap_registerbasictype` function and see the source of LuaCwrap
 for usage examples.
-    
+
 ### Create/Attach instances
 
-This is currently not implemented.
+From the C API in most cases you push wrappers to static instances to call functions
+with parameters. 
+
+Attention: Wrappers are alive during the function call and not beyond.
+It's definitely not a good idea to store them within the called function for later use.
+
+    // static instance
+    TESTSTRUCT ud = { 0 };
+    
+    // fill struct with data
+    ud.u8  =   8;
+    ud.i8  =  -8;
+    ...
+
+    // call "myfunction" with wrapped object as parameter 1
+    lua_getglobal(L, "myfunction");
+    
+    // push wrapper
+    luacwrap_pushtypedptr(L, &regType_TESTSTRUCT.hdr, &ud);
+
+    lua_call(L, 1, 0);
+
 
 # Internals
 
@@ -207,6 +231,7 @@ These are
   * $i32, $u32 (signed/unsigned long)
   * $flt, $dbl (float, double)
   * $ptr       (pointer types)
+  * $ref       (reference type utilizing the lua reference mechanism)
  
 Buffers are registered within the type table, too. The name of buffer types is derived
 from the buffer length ($buf*, where * denotes the buffer length).

@@ -235,6 +235,8 @@ int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* desc)
 
   LUASTACK_SET(L);
 
+  ud = abs_index(L, ud);
+
   switch(desc->typeclass)
   {
     case LUACWRAP_TC_RECORD:
@@ -253,14 +255,17 @@ int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* desc)
         {
           // try to return methods from method table
           lua_getfenv(L, ud);
-          lua_getfield(L, -1, "$methods");
-          lua_getfield(L, -1, stridx);
-          lua_replace(L, -3);
-          lua_pop(L, 1);
           if (!lua_isnil(L, -1))
           {
-            LUASTACK_CLEAN(L, 1);
-            return 1;
+            lua_getfield(L, -1, "$methods");
+            lua_getfield(L, -1, stridx);
+            lua_replace(L, -3);
+            lua_pop(L, 1);
+            if (!lua_isnil(L, -1))
+            {
+              LUASTACK_CLEAN(L, 1);
+              return 1;
+            }
           }
           lua_pop(L, 1);
         }
@@ -319,7 +324,6 @@ int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* desc)
     PBYTE pobj;
     pobj = (PBYTE)lua_touserdata(L, ud) + offset;
     lua_pushlightuserdata(L, pobj);
-
     LUASTACK_CLEAN(L, 1);
     return 1;
   }
@@ -433,7 +437,7 @@ int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Type* desc
         lua_remove(L, -2);
 
         lua_newtable(L);
-        lua_pushfstring(L, "__adr = %p\n", lua_touserdata(L, ud));
+        lua_pushfstring(L, "{ __ptr = %p,\n", ((PBYTE)lua_touserdata(L, ud)) +  offset);
         lua_rawseti(L, -2, idx++);
 
         member = recdesc->members;
@@ -455,6 +459,9 @@ int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Type* desc
 
           ++member;
         }
+
+        lua_pushstring(L, "}");
+        lua_rawseti(L, -2, idx++);
 
         lua_call(L, 1, 1);
 
@@ -647,8 +654,8 @@ int Embedded_index(lua_State* L)
   pobj = (luacwrap_EmbeddedObject*)lua_touserdata(L, 1);
 
   lua_rawgeti(L, LUA_REGISTRYINDEX, pobj->outer);
+  result = luacwrap_type_index(L, -1, pobj->offset, desc);
 
-  result = luacwrap_type_index(L, abs_index(L, -1), pobj->offset, desc);
   lua_remove(L, -2);
 
   LUASTACK_CLEAN(L, result);
@@ -960,7 +967,7 @@ int Boxed_index(lua_State* L)
 
   desc = luacwrap_getdescriptor(L, 1);
 
-  return luacwrap_type_index(L, abs_index(L, 1), 0, desc);
+  return luacwrap_type_index(L, 1, 0, desc);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -980,7 +987,7 @@ int Boxed_newindex(lua_State* L)
 
   desc = luacwrap_getdescriptor(L, 1);
 
-  return luacwrap_type_newindex(L, abs_index(L, 1), 0, desc);
+  return luacwrap_type_newindex(L, 1, 0, desc);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1132,10 +1139,8 @@ void* luacwrap_checktype   ( lua_State*          L
       , desc ? desc->name : "nil", uddesc ? uddesc->name : "nil", ud);
   }
 
-  // get __ptr field
+  // get address
   lua_getfield(L, ud, "__ptr");
-  assert(!lua_isnil(L, -1));
-
   result = lua_touserdata(L, -1);
   lua_pop(L, 1);
 
@@ -1398,7 +1403,7 @@ static int luacwrap_pointer_get(luacwrap_BasicType* self, lua_State *L, PBYTE pD
   if (!luacwrap_type_get_reference(L, 1, offset))
   {
     // otherwise return raw pointer as light userdata
-    PBYTE* v = (PBYTE*)pData + offset;
+    PBYTE* v = (PBYTE*)pData;
     lua_pushlightuserdata(L, *v);
   }
 
@@ -1414,6 +1419,65 @@ luacwrap_BasicType regType_Pointer =
   sizeof(PBYTE),
   luacwrap_pointer_get,
   luacwrap_pointer_set
+};
+
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  Implements set method for a special reference type which stores 
+  references to lua objects via the lua reference system. 
+  
+*////////////////////////////////////////////////////////////////////////
+static int luacwrap_reference_set(luacwrap_BasicType* self, lua_State *L, PBYTE pData, int offset)
+{
+  int* v = (int*)pData;
+
+  LUASTACK_SET(L);
+
+  *v = luaL_ref(L, abs_index(L, -1));
+
+  LUASTACK_CLEAN(L, 0);
+  return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  Implements get method for for a special reference type which stores 
+  references to lua objects via the lua reference system. 
+
+*////////////////////////////////////////////////////////////////////////
+static int luacwrap_reference_get(luacwrap_BasicType* self, lua_State *L, PBYTE pData, int offset)
+{
+  int* v = (int*)pData;
+
+  LUASTACK_SET(L);
+
+  lua_rawgeti(L, LUA_REGISTRYINDEX, *v);
+
+  LUASTACK_CLEAN(L, 1);
+  return 1;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  !!! Attention !!! 
+  We do not control the lifetime of the lua object via __gc. So be sure 
+  to use this type only if the content of a pointer type is returned
+  to the lua state.  
+
+*////////////////////////////////////////////////////////////////////////
+luacwrap_BasicType regType_Reference =
+{
+  { 
+    LUACWRAP_TC_BASIC,
+    "$ref"
+  },
+  sizeof(int),
+  luacwrap_reference_get,
+  luacwrap_reference_set
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -1937,6 +2001,9 @@ int luaopen_luacwrap(lua_State *L)
 
   // register pointer type
   luacwrap_registerbasictype(L, &regType_Pointer);
+  
+  // register reference type
+  luacwrap_registerbasictype(L, &regType_Reference);
 
   LUASTACK_CLEAN(L, 1);
   return 1;

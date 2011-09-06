@@ -34,6 +34,7 @@ typedef struct
   UINT32   u32;
   INT32    i32;
   char*    ptr;
+  int      ref;
   char     chararray[32];
   UINT32   intarray[4];
   INNERSTRUCT inner;
@@ -76,6 +77,7 @@ static luacwrap_RecordMember s_memberTESTSTRUCT[] =
   { "u32",  offsetof(TESTSTRUCT, u32),  "$u32"  },
   { "i32",  offsetof(TESTSTRUCT, i32),  "$i32"  },
   { "ptr",  offsetof(TESTSTRUCT, ptr),  "$ptr"  },
+  { "ref",  offsetof(TESTSTRUCT, ref),  "$ref"  },
   { "chararray",  offsetof(TESTSTRUCT, chararray),  "$buf32" },
   { "intarray",  offsetof(TESTSTRUCT, intarray),  "INT32_4"  },
   { "inner",  offsetof(TESTSTRUCT, inner),  "INNERSTRUCT"    },
@@ -119,9 +121,9 @@ int printTESTSTRUCT(lua_State* L)
 
   LUASTACK_SET(L);
 
-  ud = (TESTSTRUCT*)lua_touserdata(L, 1);
-
-  sprintf(szTemp, "TESTSTRUCT %p\n{\nu8:%i,\ni8:%i,\nu16:%i,\ni16:%i,\nu32:%i,\ni32:%i,\nptr:%p (%s), \ninner.pszText:%p (%s)\n}\n", 
+  ud = (TESTSTRUCT*)luacwrap_checktype(L, 1, &regType_TESTSTRUCT.hdr);
+  
+  sprintf(szTemp, "TESTSTRUCT %p\n{\nu8:%i,\ni8:%i,\nu16:%i,\ni16:%i,\nu32:%i,\ni32:%i,\nptr:%p (%s),\nref:%i,\ninner.pszText:%p (%s)\n}\n", 
     ud,
     ud->u8,
     ud->i8,
@@ -130,9 +132,11 @@ int printTESTSTRUCT(lua_State* L)
     ud->u32,
     ud->i32,
     ud->ptr,
-    ud->ptr ? ud->ptr : "",
+    "",
+    ud->ref, 
     ud->inner.pszText,
-    ud->inner.pszText ? ud->inner.pszText : "");
+    ud->inner.pszText ? ud->inner.pszText : ""
+ );
 
   lua_pushstring(L, szTemp);
 
@@ -201,14 +205,53 @@ int callwithwrappedTESTSTRUCT(lua_State* L)
   ud.i16 = -16;
   ud.u32 =  32;
   ud.i32 = -32;
-  ud.ptr = "a ptr, too";
+  // ud.ptr = "a ptr, too";
 
-  printf("callwithwrappedTESTSTRUCT %p\n", &ud);
-  
   // expects a function as parameter
-  if (lua_isfunction(L, -1))
+  if (lua_isfunction(L, 1))
   {
-    lua_pushvalue(L, -1);
+    lua_pushvalue(L, 1);
+    luacwrap_pushtypedptr(L, &regType_TESTSTRUCT.hdr, &ud);
+    lua_call(L, 1, 0);
+  }
+  
+  LUASTACK_CLEAN(L, 0);
+  return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  function which pushes a wrapped pointer to TESTSTRUCT
+  (same result after using attach method on unwrapped pointer)
+
+  @param[in]  L  pointer lua state
+  
+  @result wrapped TESTSTRUCT pointer
+
+*/////////////////////////////////////////////////////////////////////////
+int callwithRefType(lua_State* L)
+{
+  TESTSTRUCT ud = { 0 };
+  
+  LUASTACK_SET(L);
+  
+  ud.u8  =   8;
+  ud.i8  =  -8;
+  ud.u16 =  16;
+  ud.i16 = -16;
+  ud.u32 =  32;
+  ud.i32 = -32;
+  // ud.ptr = "a ptr, too";
+
+  // add parameter two as reference
+  lua_pushvalue(L, 2);
+  ud.ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+  // expects a function as parameter
+  if (lua_isfunction(L, 1))
+  {
+    lua_pushvalue(L, 1);
     luacwrap_pushtypedptr(L, &regType_TESTSTRUCT.hdr, &ud);
     lua_call(L, 1, 0);
   }
@@ -221,6 +264,7 @@ static const luaL_reg testluacwrap_functions[ ] = {
   { "printTESTSTRUCT"   , printTESTSTRUCT },
   { "callwithTESTSTRUCT", callwithTESTSTRUCT },
   { "callwithwrappedTESTSTRUCT", callwithwrappedTESTSTRUCT },
+  { "callwithRefType", callwithRefType },
   { NULL, NULL }
 };
 
