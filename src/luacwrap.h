@@ -269,6 +269,10 @@ typedef struct luacwrap_DefUIntConst
 
 #define LUACWRAP_DEFUINTCONSTANT(id) { #id, id },
 
+#ifndef LUACWRAP_API
+#define LUACWRAP_API extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -276,36 +280,36 @@ extern "C" {
 //
 // used to register a basic type descriptor in the basic type table
 //
-extern int luacwrap_registerbasictype ( lua_State*          L
-                                      , luacwrap_BasicType* desc);
+LUACWRAP_API int luacwrap_registerbasictype ( lua_State*          L
+                                            , luacwrap_BasicType* desc);
 
 //
 // register a type descriptor in the given (namespace) table
 //
-extern int luacwrap_registertype  ( lua_State*            L
-                                  , int                   nsidx
-                                  , luacwrap_Type*        desc);
+LUACWRAP_API int luacwrap_registertype  ( lua_State*            L
+                                        , int                   nsidx
+                                        , luacwrap_Type*        desc);
 
 //
 // check a userdata type descriptor against a given type descriptor
 //
-extern void* luacwrap_checktype   ( lua_State*            L
-                                  , int                   ud
-                                  , luacwrap_Type*        desc);
+LUACWRAP_API void* luacwrap_checktype   ( lua_State*            L
+                                        , int                   ud
+                                        , luacwrap_Type*        desc);
 
 //
 // push a pointer as a typed light (means not garbage collected) object 
 //
-extern int luacwrap_pushtypedptr  ( lua_State*            L
-                                  , luacwrap_Type*        desc
-                                  , void*                 pObj);
+LUACWRAP_API int luacwrap_pushtypedptr  ( lua_State*            L
+                                        , luacwrap_Type*        desc
+                                        , void*                 pObj);
 
 //
 //  Registers a list of global constants maintained in an array or
 //  luacwrap_DefUIntConst structs. 
 //
-extern void luacwrap_defuintconstants ( lua_State*              L
-                                      , luacwrap_DefUIntConst*  constants);
+LUACWRAP_API void luacwrap_defuintconstants ( lua_State*              L
+                                            , luacwrap_DefUIntConst*  constants);
 
 
 #ifdef __cplusplus

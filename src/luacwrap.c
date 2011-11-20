@@ -1124,7 +1124,7 @@ int luacwrap_type_new(lua_State* L)
   check a userdata type descriptor against a given type descriptor
 
 *////////////////////////////////////////////////////////////////////////
-void* luacwrap_checktype   ( lua_State*          L
+LUACWRAP_API  void* luacwrap_checktype   ( lua_State*          L
                            , int                 ud
                            , luacwrap_Type*      desc)
 {
@@ -1154,7 +1154,7 @@ void* luacwrap_checktype   ( lua_State*          L
   push a typed pointer to a not garbage collected object
 
 *////////////////////////////////////////////////////////////////////////
-int luacwrap_pushtypedptr(lua_State* L, luacwrap_Type* desc, void* pObj)
+LUACWRAP_API int luacwrap_pushtypedptr(lua_State* L, luacwrap_Type* desc, void* pObj)
 {
   int result = 0;
   LUASTACK_SET(L);
@@ -1284,7 +1284,7 @@ luaL_reg g_mtDynTypeCtors[ ] = {
   @param[in]  desc    basic type descriptor
 
 */////////////////////////////////////////////////////////////////////////
-int luacwrap_registerbasictype(lua_State* L, luacwrap_BasicType* desc)
+LUACWRAP_API int luacwrap_registerbasictype(lua_State* L, luacwrap_BasicType* desc)
 {
   LUASTACK_SET(L);
 
@@ -1501,7 +1501,7 @@ luacwrap_BasicType regType_Reference =
   @param[in]  desc          type descriptor
 
 */////////////////////////////////////////////////////////////////////////
-int luacwrap_registertype( lua_State*       L
+LUACWRAP_API int luacwrap_registertype( lua_State*       L
                          , int              nsidx
                          , luacwrap_Type*   desc)
 {
@@ -1945,7 +1945,7 @@ char* create_moduletable =
   @param[in]  L  pointer lua state
 
 */////////////////////////////////////////////////////////////////////////
-int luaopen_luacwrap(lua_State *L)
+LUACWRAP_API int luaopen_luacwrap(lua_State *L)
 {
   LUASTACK_SET(L);
 

@@ -22,7 +22,7 @@
   @param[in]  constants constant table
 
 */////////////////////////////////////////////////////////////////////////
-void luacwrap_defuintconstants(lua_State* L, luacwrap_DefUIntConst* constants)
+LUACWRAP_API void luacwrap_defuintconstants(lua_State* L, luacwrap_DefUIntConst* constants)
 {
   if (constants)
   {
