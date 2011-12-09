@@ -305,6 +305,12 @@ LUACWRAP_API int luacwrap_pushtypedptr  ( lua_State*            L
                                         , void*                 pObj);
 
 //
+// access to reference table
+//
+LUACWRAP_API int luacwrap_createreference(lua_State* L, int index);
+LUACWRAP_API int luacwrap_pushreference  (lua_State* L, int tag);
+
+//
 //  Registers a list of global constants maintained in an array or
 //  luacwrap_DefUIntConst structs. 
 //

@@ -245,8 +245,7 @@ int callwithRefType(lua_State* L)
   // ud.ptr = "a ptr, too";
 
   // add parameter two as reference
-  lua_pushvalue(L, 2);
-  ud.ref = luaL_ref(L, LUA_REGISTRYINDEX);
+  ud.ref = luacwrap_createreference(L, 2);
 
   // expects a function as parameter
   if (lua_isfunction(L, 1))

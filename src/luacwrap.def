@@ -4,5 +4,7 @@ EXPORTS
   luacwrap_registerbasictype
   luacwrap_registertype
   luacwrap_checktype
-  luacwrap_defuintconstants
   luacwrap_pushtypedptr
+  luacwrap_createreference
+  luacwrap_pushreference
+  luacwrap_defuintconstants

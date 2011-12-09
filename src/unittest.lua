@@ -3,6 +3,18 @@ testluacwrap = require("testluacwrap")
 print("--> create TESTSTRUCT")
 local struct = TESTSTRUCT:new()
 
+print("--> check $ref init values")
+
+-- by default references should have the value nil
+assert(nil == struct.ref.value)
+-- and the reserved index 0
+assert(0 == struct.ref.ref)
+
+-- print adresses
+print("--> print adresses (__ptr)")
+print(struct.__ptr)
+print(struct.intarray.__ptr)
+
 print("--> test assignment")
 struct.u8  = 11
 struct.i8  = 22
@@ -31,6 +43,66 @@ assert(struct.intarray[2] == 20)
 assert(struct.intarray[3] == 30)
 assert(struct.intarray[4] == 40)
 
+print("--> test table assignment")
+struct:set{
+        u8  = 91,
+        i8  = 92,
+        u16 = 93,
+        i16 = 94,
+        u32 = 95,
+        i32 = 96,
+        ptr = "hello",
+        chararray = "hello",
+        intarray = { 19,
+                                 29,
+                                 39,
+                                 49,
+        }
+}
+
+assert(struct.u8  == 91)
+assert(struct.i8  == 92)
+assert(struct.u16 == 93)
+assert(struct.i16 == 94)
+assert(struct.u32 == 95)
+assert(struct.i32 == 96)
+assert(struct.ptr == "hello")
+assert(struct.chararray == "hello\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
+assert(struct.intarray[1] == 19)
+assert(struct.intarray[2] == 29)
+assert(struct.intarray[3] == 39)
+assert(struct.intarray[4] == 49)
+
+print("--> test new with table assignment")
+struct = TESTSTRUCT:new{
+        u8  = 91,
+        i8  = 92,
+        u16 = 93,
+        i16 = 94,
+        u32 = 95,
+        i32 = 96,
+        ptr = "hello",
+        chararray = "hello",
+        intarray = { 19,
+                                 29,
+                                 39,
+                                 49,
+        }
+}
+
+assert(struct.u8  == 91)
+assert(struct.i8  == 92)
+assert(struct.u16 == 93)
+assert(struct.i16 == 94)
+assert(struct.u32 == 95)
+assert(struct.i32 == 96)
+assert(struct.ptr == "hello")
+assert(struct.chararray == "hello\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
+assert(struct.intarray[1] == 19)
+assert(struct.intarray[2] == 29)
+assert(struct.intarray[3] == 39)
+assert(struct.intarray[4] == 49)
+
 -- check sizes
 print("--> check __len")
 -- assert(#struct == 80)       -- depends on packing, could be 72
@@ -51,6 +123,14 @@ function printtable(t)
     print("  ", k, v)
   end
 end
+
+print("--> check $ref types")
+struct.ref = "my ref"
+-- check internal reference assignment
+assert(struct.ref.ref == 1)
+
+assert("string" == type(struct.ref.value))
+assert("my ref" == struct.ref.value)
 
 print("--> test attach")
 -- test attach
@@ -81,7 +161,17 @@ print("--> callwithRefType")
 function wrapfunc(wrap)
   print(wrap)
 
+  assert(wrap.u8  ==   8)
+  assert(wrap.i8  == - 8)
+  assert(wrap.u16 ==  16)
+  assert(wrap.i16 == -16)
+  assert(wrap.u32 ==  32)
+  assert(wrap.i32 == -32)
+
   print("wrap.__ptr", wrap.__ptr)
+
+  assert("string" == type(wrap.ref.value))
+  assert("callwithRefType" == wrap.ref.value)
 
   print(testluacwrap.printTESTSTRUCT(wrap))
 end

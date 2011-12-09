@@ -102,7 +102,7 @@ to be able to declare wrapped structs within C.
 Importing LuaCwrap is only necessary if you want to declare your own types via the Lua-API.
 In this case use the followig line:
 
-    luacwrap = import("luacwrap")
+    local luacwrap = import("luacwrap")
 
 C modules which want to provide wrappers usually create their own namespace table to register their types. 
 For an example see the source code of the `testluacwrap` module, which is provided with this package 

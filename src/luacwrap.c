@@ -27,7 +27,9 @@ const char* g_keyLibraryTable = "luacwrap";
 
 // forward declarations
 int getEmbedded(lua_State* L, int ud, int offset, const char* typname);
-int setEmbedded(lua_State* L, int ud, int val, int offset, const char* typname);
+int setEmbedded(lua_State* L, int offset, const char* typname);
+
+static int luacwrap_type_set(lua_State* L);
 
 //////////////////////////////////////////////////////////////////////////
 /**
@@ -128,7 +130,6 @@ int luacwrap_type_set_reference(lua_State *L, int ud, int value, int offset)
   return 0;
 }
 
-
 //////////////////////////////////////////////////////////////////////////
 /**
 
@@ -218,7 +219,7 @@ int luacwrap_set_closure(lua_State* L)
   offset = lua_tointeger(L, lua_upvalueindex(1));
   typname = lua_tostring(L, lua_upvalueindex(2));
 
-  return setEmbedded(L, 1, 2, offset, typname);
+  return setEmbedded(L, offset, typname);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -339,8 +340,13 @@ int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* desc)
   The object pointer is determined from the pointer to 
   the outer object and the given offset.
 
+  Parameters on lua stack:
+  - self  (userdata, embedded object)  -3
+  - index                              -2
+  - value                              -1
+
 *////////////////////////////////////////////////////////////////////////
-int luacwrap_type_newindex(lua_State* L, int ud, int offset, luacwrap_Type* desc)
+int luacwrap_type_newindex(lua_State* L, int offset, luacwrap_Type* desc)
 {
   LUASTACK_SET(L);
 
@@ -356,12 +362,12 @@ int luacwrap_type_newindex(lua_State* L, int ud, int offset, luacwrap_Type* desc
         luacwrap_RecordMember* member;
         luacwrap_RecordType* recdesc = (luacwrap_RecordType*)desc;
 
-        const char* stridx = lua_tostring(L, 2);
+        const char* stridx = lua_tostring(L, -2);
 
         member = findMember(recdesc->members, stridx);
         if (member)
         {
-          return setEmbedded(L, ud, 3, offset+member->offset, member->typname);
+          return setEmbedded(L, offset+member->offset, member->typname);
         }
         else
         {
@@ -373,13 +379,13 @@ int luacwrap_type_newindex(lua_State* L, int ud, int offset, luacwrap_Type* desc
       {
         // determine offset and return inner wrapper
         luacwrap_ArrayType* arrdesc = (luacwrap_ArrayType*)desc;
-        int idx = lua_tointeger(L, 2);
+        int idx = lua_tointeger(L, -2);
 
         if ((idx>0) && (idx <= arrdesc->elemcount))
         {
           int arroffs = (idx - 1) * arrdesc->elemsize;
 
-          return setEmbedded(L, ud, 3, offset+arroffs, arrdesc->elemtype);
+          return setEmbedded(L, offset+arroffs, arrdesc->elemtype);
         }
         else
         {
@@ -678,18 +684,13 @@ int Embedded_newindex(lua_State* L)
   luacwrap_Type* desc;
   luacwrap_EmbeddedObject* pobj;
 
-  LUASTACK_SET(L);
-
   desc = luacwrap_getdescriptor(L, 1);
   pobj = (luacwrap_EmbeddedObject*)lua_touserdata(L, 1);
 
   lua_rawgeti(L, LUA_REGISTRYINDEX, pobj->outer);
+  lua_replace(L, 1);
 
-  luacwrap_type_newindex(L, abs_index(L, -1), pobj->offset, desc);
-  lua_pop(L, 1);
-
-  LUASTACK_CLEAN(L, 0);
-  return 0;
+  return luacwrap_type_newindex(L, pobj->offset, desc);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -889,10 +890,14 @@ int  getEmbedded(lua_State* L, int ud, int offset, const char* typname)
 
   Set the embedded value. If typname references a basic type or a 
   buffer then the value is written to the object.
-  Assigning to records and arrays is currently not supported.
+
+  Parameters on lua stack:
+  - self  (userdata, embedded object)  -3
+  - index                              -2
+  - value                              -1
 
 *////////////////////////////////////////////////////////////////////////
-int setEmbedded(lua_State* L, int ud, int val, int offset, const char* typname)
+int setEmbedded(lua_State* L, int offset, const char* typname)
 {
   luacwrap_Type* desc;
 
@@ -907,9 +912,9 @@ int setEmbedded(lua_State* L, int ud, int val, int offset, const char* typname)
         PBYTE pobj;
         luacwrap_BasicType* basdesc = (luacwrap_BasicType*)desc;
 
-        pobj = (PBYTE)lua_touserdata(L, ud) + offset;
+        pobj = (PBYTE)lua_touserdata(L, -3) + offset;
 
-        lua_pushvalue(L, val);
+        lua_pushvalue(L, -1);
         basdesc->setWrapper(basdesc, L, pobj, offset);
         lua_pop(L, 1);
       }
@@ -921,9 +926,9 @@ int setEmbedded(lua_State* L, int ud, int val, int offset, const char* typname)
         luacwrap_BufferType* bufdesc = (luacwrap_BufferType*)desc;
 
         // check for string
-        const char* strval = lua_tolstring(L, val, &length);
+        const char* strval = lua_tolstring(L, -1, &length);
 
-        pobj = (PBYTE)lua_touserdata(L, ud) + offset;
+        pobj = (PBYTE)lua_touserdata(L, -3) + offset;
 
         // limit length to maximum buffer size
         length = (bufdesc->size < length) ? bufdesc->size : length;
@@ -936,8 +941,11 @@ int setEmbedded(lua_State* L, int ud, int val, int offset, const char* typname)
     case LUACWRAP_TC_RECORD:
     case LUACWRAP_TC_ARRAY:
       {
-        // TODO:
-        luaL_error(L, "assignment to array/record not supported, yet");
+        // recurse
+        lua_pushcfunction(L, luacwrap_type_set);
+        pushEmbedded(L, 1, offset, desc);           // push embedded
+        lua_pushvalue(L, -3);                       // push value
+        lua_call(L, 2, 0);
       }
       break;
     default:
@@ -987,7 +995,7 @@ int Boxed_newindex(lua_State* L)
 
   desc = luacwrap_getdescriptor(L, 1);
 
-  return luacwrap_type_newindex(L, 1, 0, desc);
+  return luacwrap_type_newindex(L, 0, desc);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1038,7 +1046,6 @@ luaL_reg g_mtBoxed[ ] = {
   { NULL, NULL }
 };
 
-
 //////////////////////////////////////////////////////////////////////////
 /**
 
@@ -1061,7 +1068,8 @@ luaL_reg g_mtBoxed[ ] = {
 
 
   Parameters on lua stack:
-  - self  (userdata, embedded object)
+  - self  (type descriptor)
+  - init parameter (optional)
 
 *////////////////////////////////////////////////////////////////////////
 int luacwrap_type_new(lua_State* L)
@@ -1097,7 +1105,7 @@ int luacwrap_type_new(lua_State* L)
   // determine size
   udsize = luacwrap_type_size(desc);
 
-  // create userdate which holds array data
+  // create userdata which holds type instance
   ud = lua_newuserdata(L, udsize);
   memset(ud, 0, udsize);
 
@@ -1114,6 +1122,15 @@ int luacwrap_type_new(lua_State* L)
   lua_setfield(L, -2, "$methods");
   lua_setfenv(L, -2);
   
+  // if optional init parameter present then call set()
+  if (!lua_isnil(L, 2))
+  {
+    lua_pushcfunction(L, luacwrap_type_set);
+    lua_pushvalue(L, -2);     // push userdata
+    lua_pushvalue(L, 2);      // push value
+    lua_call(L, 2, 0);        // call set()
+  }
+
   LUASTACK_CLEAN(L, 1);
   return 1;
 }
@@ -1235,8 +1252,130 @@ int luacwrap_type_attach(lua_State* L)
   return result;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  set attributes
+
+  Parameters on lua stack:
+  - self (userdata, embedded object)
+  - data
+
+  Return values on lua stack
+  - self (userdata, embedded object)
+
+*////////////////////////////////////////////////////////////////////////
+static int luacwrap_type_set(lua_State* L)
+{
+  luacwrap_Type* desc;
+
+  LUASTACK_SET(L);
+  
+  // get descriptor
+  desc = luacwrap_getdescriptor(L, 1);
+
+  switch(desc->typeclass)
+  {
+    case LUACWRAP_TC_RECORD: 
+      {
+        // check second parameter
+        if (lua_istable(L, 2))
+        {
+          // try to get __newindex metamethod
+          luaL_getmetafield(L, 1, "__newindex");
+          assert(LUA_TFUNCTION == lua_type(L, -1));
+
+          lua_pushnil(L);  // first key
+          while (0 != lua_next(L, 2))
+          {
+            // push __newindex function
+            lua_pushvalue(L, -3);
+
+            // push userdata
+            lua_pushvalue(L, 1);
+
+            // push key and value
+            lua_pushvalue(L, -4);
+            lua_pushvalue(L, -4);
+
+            // push __newindex
+            lua_call(L, 3, 0);
+
+            // removes 'value'; keeps 'key' for next iteration
+            lua_pop(L, 1);
+          }
+
+          // pop __newindex
+          lua_pop(L, 1);
+        }
+      }
+      break;
+    case LUACWRAP_TC_ARRAY :
+      {
+        int idx = 1;
+        // check second parameter
+        if (lua_istable(L, 2))
+        {
+          // try to get __newindex metamethod
+          luaL_getmetafield(L, 1, "__newindex");
+          assert(LUA_TFUNCTION == lua_type(L, -1));
+
+          // push __newindex function
+          lua_pushvalue(L, -1);
+
+          // push userdata
+          lua_pushvalue(L, 1);
+
+          // push key 
+          lua_pushinteger(L, idx);
+
+          // push value
+          lua_rawgeti(L, 2, idx);
+          while (!lua_isnil(L, -1))
+          {
+            // call __newindex
+            lua_call(L, 3, 0);
+
+            // push __newindex function
+            lua_pushvalue(L, -1);
+
+            // push userdata
+            lua_pushvalue(L, 1);
+
+            // next idx
+            ++idx;
+            lua_pushinteger(L, idx);
+            lua_rawgeti(L, 2, idx);
+          }
+
+          // pop __newindex, __newindex, userdata, key and nil (value)
+          lua_pop(L, 5);
+        }
+      }
+      break;
+    case LUACWRAP_TC_BUFFER:
+      {
+        luaL_error(L, "Setting buffers via set/new is not supported, yet");
+      }
+      break;
+    case LUACWRAP_TC_BASIC :
+    default:
+      {
+        assert(0);
+      }
+  }
+
+  // return ud (parameter 1) as first result
+  lua_pushvalue(L, 1);
+
+  LUASTACK_CLEAN(L, 1);
+  return 1;
+}
+
+
 luaL_reg g_mtTypeCtors[ ] = {
   { "new"   , luacwrap_type_new     },
+  { "set"   , luacwrap_type_set     },
   { "attach", luacwrap_type_attach  },
   { NULL, NULL }
 };
@@ -1340,6 +1479,187 @@ LUACWRAP_API int luacwrap_registerbasictype(lua_State* L, luacwrap_BasicType* de
   return 0;
 }
 
+int* luacwrap_toreference  (lua_State* L, int index);
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  creates a reference in the reference table
+
+  @param[in]  L       lua state
+  @param[in]  index   stack index
+
+*////////////////////////////////////////////////////////////////////////
+LUACWRAP_API int luacwrap_createreference(lua_State* L, int index)
+{
+  int ref;
+  int validx = abs_index(L, index);
+
+  LUASTACK_SET(L);
+
+  // get access to _M.reftable
+  lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
+  lua_gettable(L, LUA_REGISTRYINDEX);
+  lua_getfield(L, -1, "reftable");
+  assert(lua_istable(L, -1));
+
+  lua_pushvalue(L, validx);
+  ref = luaL_ref(L, -2);
+
+  // pop _M and _M.reftable
+  lua_pop(L, 2);
+
+  LUASTACK_CLEAN(L, 0);
+  return ref;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  release a reference from the reference table
+
+  @param[in]  L       lua state
+
+*////////////////////////////////////////////////////////////////////////
+LUACWRAP_API int luacwrap_release_reference(lua_State *L)
+{
+  int* pref = luacwrap_toreference(L, 1);
+
+  LUASTACK_SET(L);
+
+  if (pref && (*pref))
+  {
+    // get access to _M.reftable
+    lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
+    lua_gettable(L, LUA_REGISTRYINDEX);
+    lua_getfield(L, -1, "reftable");
+    assert(lua_istable(L, -1));
+
+    lua_pushnil(L);
+    lua_rawseti(L, -2, *pref);
+
+    // remove _M and _M.reftable
+    lua_pop(L, 2);
+  }
+
+  LUASTACK_CLEAN(L, 0);
+  return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  implements mt.__index for references
+
+  @param[in]  L       lua state
+
+*////////////////////////////////////////////////////////////////////////
+int luacwrap_reference_index(lua_State *L)
+{
+  const char* stridx;
+  int* pref = luacwrap_toreference(L, 1);
+
+  LUASTACK_SET(L);
+
+  if (pref)
+  {
+    stridx = lua_tostring(L, 2);
+    if (0 == strcmp(stridx, "value"))
+    {
+      // get access to _M.reftable
+      lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
+      lua_gettable(L, LUA_REGISTRYINDEX);
+      lua_getfield(L, -1, "reftable");
+      assert(lua_istable(L, -1));
+
+      lua_rawgeti(L, -1, *pref);
+
+      // remove _M and _M.reftable
+      lua_replace(L, -3);
+      lua_pop(L, 1);
+    } 
+    else if (0 == strcmp(stridx, "release"))
+    {
+      // return release function
+      lua_pushcfunction(L, luacwrap_release_reference);
+    }
+    else if (0 == strcmp(stridx, "ref"))
+    {
+      lua_pushinteger(L, *pref);
+    }
+    else
+    {
+      luaL_error(L, "try to access unknown field <%s>", stridx);
+      LUASTACK_CLEAN(L, 0);
+      return 0;
+    }
+
+    LUASTACK_CLEAN(L, 1);
+    return 1;
+  }
+  return 0;
+}
+
+luaL_reg g_mtReferences[ ] = {
+  { "__index", luacwrap_reference_index },
+  { NULL, NULL }
+};
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  pushes a reference object onto the stack
+
+  @param[in]  L         lua state
+  @param[in]  reference reference index
+
+*////////////////////////////////////////////////////////////////////////
+LUACWRAP_API int luacwrap_pushreference(lua_State* L, int reference)
+{
+  int* ud;
+
+  LUASTACK_SET(L);
+
+  ud = lua_newuserdata(L, sizeof(int*));
+  *ud = reference;
+  lua_pushlightuserdata(L, g_mtReferences);
+  lua_rawget(L, LUA_REGISTRYINDEX);
+  lua_setmetatable(L, -2);
+
+  LUASTACK_CLEAN(L, 1);
+  return 1;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  access a reference object on the stack
+
+  @param[in]  L       lua state
+  @param[in]  index   stack index
+
+*////////////////////////////////////////////////////////////////////////
+int* luacwrap_toreference(lua_State* L, int index)
+{
+  int* p = (int*)lua_touserdata(L, index);
+  if (p != NULL) 
+  {  
+    if (lua_getmetatable(L, index)) 
+    {
+      lua_pushlightuserdata(L, g_mtReferences);
+      lua_rawget(L, LUA_REGISTRYINDEX);
+      if (lua_rawequal(L, -1, -2)) 
+      {
+        lua_pop(L, 2);
+        return p;
+      }
+    }
+  }
+  luaL_typerror(L, index, "luacwrap reference");
+  return NULL;
+}
+
+
 //////////////////////////////////////////////////////////////////////////
 /**
 
@@ -1435,7 +1755,7 @@ static int luacwrap_reference_set(luacwrap_BasicType* self, lua_State *L, PBYTE 
 
   LUASTACK_SET(L);
 
-  *v = luaL_ref(L, abs_index(L, -1));
+  *v = luacwrap_createreference(L, -1);
 
   LUASTACK_CLEAN(L, 0);
   return 0;
@@ -1451,13 +1771,7 @@ static int luacwrap_reference_set(luacwrap_BasicType* self, lua_State *L, PBYTE 
 static int luacwrap_reference_get(luacwrap_BasicType* self, lua_State *L, PBYTE pData, int offset)
 {
   int* v = (int*)pData;
-
-  LUASTACK_SET(L);
-
-  lua_rawgeti(L, LUA_REGISTRYINDEX, *v);
-
-  LUASTACK_CLEAN(L, 1);
-  return 1;
+  return luacwrap_pushreference(L, *v);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1625,13 +1939,6 @@ const char* luacwrap_storestring(lua_State* L, int idx, const char* errmsg, int 
     lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
     lua_gettable(L, LUA_REGISTRYINDEX);
     lua_getfield(L, -1, "stringtable");
-    if (lua_isnil(L, -1))
-    {
-      lua_pop(L, 1);
-      lua_newtable(L);
-      lua_pushvalue(L, -1);
-      lua_setfield(L, -3, "stringtable");
-    }
     assert(lua_istable(L, -1));
     
     // lookup in _M.stringtable
@@ -1961,10 +2268,24 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
   lua_setfield(L, -2, "registerarray");
   lua_pushcfunction(L, luacwrap_createbuffer);
   lua_setfield(L, -2, "createbuffer");
+  lua_pushcfunction(L, luacwrap_release_reference);
+  lua_setfield(L, -2, "releasereference");
+
+  // add reftable and string table to module table
+  lua_newtable(L);
+  lua_setfield(L, -2, "reftable");
+  lua_newtable(L);
+  lua_setfield(L, -2, "stringtable");
 
   // store module table in registry
   lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
   lua_pushvalue(L, -2);
+  lua_rawset(L, LUA_REGISTRYINDEX);
+
+  // create metatable for reference objects and store it in registry
+  lua_pushlightuserdata(L, g_mtReferences);
+  lua_newtable(L);
+  luaL_register( L, NULL, g_mtReferences);
   lua_rawset(L, LUA_REGISTRYINDEX);
 
   // create metatable for boxed objects and store it in registry
