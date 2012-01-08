@@ -14,13 +14,6 @@
 <p>LuaCwrap is a wrapper for C datatypes written in pure C. It utilizes metadata (aka type descriptors)
 to describe the layout and names of structures, unions, arrays and buffers.</p>
 
-<h2>Attention</h2>
-
-<p>Because LuaCwrap allows to attach wrappers to existing userdata (pointers) it is not safe 
-according to the Lua book. Common errors will be detected by LuaCwrap, but as the 'attach' 
-method acts like a C cast many things could go wrong.
-So if you use 'attach' be sure to know what you are doing.</p>
-
 <h2>Features</h2>
 
 <p>LuaCwrap</p>
@@ -30,8 +23,10 @@ So if you use 'attach' be sure to know what you are doing.</p>
     <li>supports array types</li>
     <li>supports fixed length buffers</li>
     <li>supports pointers</li>
-    <li>lua strings and userdata could be assigned to wrapped pointers</li>
-    <li>maintains lifetime of lua objects which had been assigned to wrapped pointers</li>
+    <li>lua strings and userdata could be assigned to pointer attributes</li>
+    <li>maintains lifetime of lua objects which had been assigned to pointer attributes</li>
+    <li>support for reference attributes (manual control lifetime of assigned lua object)</li>
+    <li>supports customizeable method table for struct and union types</li>
     <li>supports C and Lua API</li>
 </ul>
 
@@ -74,7 +69,7 @@ and execute</p>
 </div>
 
 <p>This creates the necessary libs/links within /usr/local/lib and /usr/local/lib/lua/5.1 to
-enable LuaCwrap to be3 used as a shared library and a lua module.</p>
+enable LuaCwrap to be used as a shared library and a lua module.</p>
 
 
 <h2>Windows</h2>
@@ -103,16 +98,133 @@ lua unittest.lua
 
 <h3>Installation</h3>
 
-<p>To install luacwrap into Lua for Windows copy the file luacwrap.dll to the Lua for Windows clibs directory.</p>
+<p>To install LuaCwrap into Lua for Windows copy the file luacwrap.dll to the Lua for Windows clibs directory.</p>
 
 <h1>Usage</h1>
+
+<h2>Boxed/Embedded objects</h2>
+
+<p>LuaCwrap deals with two types of objects:</p>
+
+<ul>
+    <li>Boxed objects</li>
+    <li>Embedded objects</li>
+</ul>
+
+<p>The lifetime of both object types are controlled by the Lua VM. Boxed objects are 'toplevel'
+whereas Embedded objects reference 'embedded' objects within so called 'outer' objects. Because of that Embedded 
+objects have to control the lifetime of their outmost boxed object.</p>
+
+
+<pre id="boxedobject" class="textdiagram">
+
+            Boxed object (userdata )
+     +----->+-----------------+--------+------------->metatable
+     |      |cBLU             |        |                __index     Boxed_index
+     |      |                 |        |                __newindex  Boxed_newindex
+     |      |object data      |        |                __tostring  Boxed_tostring
+     |      |                 |        |                __len       Boxed_len
+     |      |                 |        |
+     |  +-->+-----------------+        +------------->environment
+     |  |   |c1FF             |                         $desc     typedescriptor
+     |  |   +-----------------+                         pointer references (offset as key)
+     |  |   |cBLU             |
+     |  |   +-----------------+ 
+     |  |
+     |  |   Embedded object (userdata)
+     |  |   +-----------------+--------+------------->metatable
+     +------|outer            |        |                __index     Embedded_index
+        |   +-----------------+        |                __newindex  Embedded_newindex
+        +---|offset           |        |                __tostring  Embedded_tostring
+            +-----------------+        |                __len       Embedded_len
+                                       |                __gc        Embedded_gc
+                                       |
+                                       +------------->environment
+                                                        $desc     typedescriptor
+
+</pre>
+
+
+<h3>Pointer attributes</h3>
+
+<p>If a boxed object contains a pointer attribute ($ptr) you are able to assign different 
+Lua object types to the pointer attribute. These objects types like strings, userdata and light userdata 
+include LuaCwrap objects which makes it possible to create pointer connected data structures.
+To couple the lifetime of Lua objects that had been assigned to a pointer attribute to the lifetime of 
+the outer object a reference to the Lua object pointed to is stored within the environment table
+of the outer object.
+To handle union types correctly the pointer attribute offset is used as the table key. The table value
+contains the referenced value.</p>
+
+<h3>Reference attributes</h3>
+
+<p>Sometimes it is necessary to manually control the lifetime of Lua objects pointed to by
+pointer attributes. For this reference attributes ($ref) are used. If you assign Lua objects to 
+reference attributes a reference to the Lua object is stored in a hidden reference table under a unique
+integer id. The integer id is assigned to the reference attribute. On reading a reference attribute the
+integer id is returned as a reference object. This reference object can be used to access the underlying 
+Lua object (via <code>refobject.value</code>) the reference index number (via <code>refobject.ref</code>) or to release the 
+reference manually (via <code>refobject:release()</code>). </p>
+
+<h3>Light embedded objects</h3>
+
+
+<pre id="cobjects" class="textdiagram">
+
+            light userdata              C object
+     +----->+-----------------+   +-->+-----------------+
+     |      |                 |---+   |cBLU             |
+     |      +-----------------+       |                 |
+     |                                |object data      |
+     |                                |                 |
+     |                                |                 |
+     |  +---------------------------->+-----------------+
+     |  |                             |c1FF             |
+     |  |                             +-----------------+
+     |  |                             |cBLU             |
+     |  |                             +-----------------+ 
+     |  |
+     |  |   Embedded object (userdata)
+     |  |   +-----------------+--------+------------->metatable
+     +------|outer            |        |                __index     Embedded_index
+        |   +-----------------+        |                __newindex  Embedded_newindex
+        +---|offset           |        |                __tostring  Embedded_tostring
+            +-----------------+        |                __len       Embedded_len
+                                       |                __gc        Embedded_gc
+                                       |
+                                       +------------->environment
+                                                        $desc     typedescriptor
+
+</pre>
+
+
+<p>Embedded objects can also be used to push C pointers during calls from C to Lua. But in this case you 
+hav to be aware that in most cases the C pointer isn't valid after the Lua function scope ends. 
+If you want's to store the referenced value you have to duplicate the underlying instance via 
+<object>:__dup(), which creates a new boxed object.</p>
+
+<div class="code">function callback_from_C(myobject)
+  mystorage[#mystorage+1] = myobject:__dup()
+end
+</div>
+
+
+<div class="attention">
+Another issue of C controlled objects is that they have no associated Lua environment table. 
+If you set pointer attributes to your own Lua objects, you have to take care that they don't 
+go out of scope. Otherwise the C function returned to could try to access memory that has 
+already been garbage collected. A good advice is to use light embedded objects only when 
+they do not contain pointer attributes.
+</div>
+
 
 <h2>Dual interface</h2>
 
 <p>The LuaCwrap exports several functions. One of them the luaopen_luacwrap
-function enables that LuaCwrap could be used from standalone lua scripts.
-The other functions could be bound to by lua C modules or executables
-to be able to declare wrapped structs within C.</p>
+function enables that LuaCwrap could be used from standalone Lua scripts.
+The other functions could be bound to by C modules or executables
+to be able to declare object descriptors in C or to create/push object instances
+on the Lua stack.</p>
 
 <h2>Lua-API</h2>
 
@@ -121,28 +233,28 @@ to be able to declare wrapped structs within C.</p>
 <p>Importing LuaCwrap is only necessary if you want to declare your own types via the Lua-API.
 In this case use the followig line:</p>
 
-<div class="code">local luacwrap = import("luacwrap")
+<div class="code">luacwrap = import("luacwrap")
 </div>
 
 <p>C modules which want to provide wrappers usually create their own namespace table to register their types. 
 For an example see the source code of the <code>testluacwrap</code> module, which is provided with this package 
-for unittesting.</p>
+for unit testing.</p>
 
 <h3>Registering type descriptors</h3>
 
 <h4>Register array types</h4>
 
-<div class="code">type = luacwrap.registerarraytype(name, size, elemtype)
+<div class="code">type = luacwrap.registerarray(name, size, elemtype)
 </div>
 
 <h4>Register record types</h4>
 
-<div class="code">type = luacwrap.registerrecordtype(name, members)
+<div class="code">type = luacwrap.registerstruct(name, members)
 </div>
 
 <h4>Register buffer types</h4>
 
-<div class="code">type, name = luacwrap.registerbuffertype(name, size)
+<div class="code">type, name = luacwrap.registerbuffer(name, size)
 </div>
 
 <h3>Create/Attach instances</h3>
@@ -154,6 +266,95 @@ create new instances or create a wrapper around existing userdata.</p>
 local wrap = TESTSTRUCT:attach(udata)     -- attach descriptor to (light) user data
 </div>
 
+<h3>Initialize instance content</h3>
+
+<p>By default the <code>new</code> function initializes objects with 0. An aditional init parameter
+changes this behaviour. If you specify a number as init parameter the object memory is 
+filled with the given number value.
+If you give a lua table the <code>new</code> function it assigns the name/value pairs to 
+the corresponding attributes. This works recursively for embedded object instances. </p>
+
+<div class="code">local mystruct = struct = TESTSTRUCT:new{
+  u8  = 91,
+  i32 = 96,
+  ptr = "hello",
+  chararray = "hello",
+  intarray = { 19,
+         29,
+         39,
+         49,
+  }
+}
+</div>
+
+<p>An additional <code>set</code> function makes it possible to initialize existing object instances
+from a given table of values.</p>
+
+<div class="code">mystruct:set{
+  u8  = 91,
+  i32 = 96,
+  ptr = "hello",
+  chararray = "hello",
+  intarray = { 19,
+         29,
+         39,
+         49,
+  }
+}
+</div>
+
+<h3>Assign attribute values</h3>
+
+<p>Object attributes can be accessed like Lua table items.</p>
+
+<div class="code">-- set
+mystruct.u32 = 100
+mystruct["u32"] = 100
+-- get
+local myval = mystruct.u32
+myval = mystruct["u32"]
+</div>
+
+<h3>Duplicate objects</h3>
+
+<p>The <code>new</code> function could also be used to duplicate objects. If the first parameter is a 
+object of the same type the contents of that object are used to initialize the newly created one.</p>
+
+<div class="code">local mynewstruct = TESTSTRUCT:new(mystruct)
+</div>
+
+<p>A shorter form is to use the <code>object:__dup()</code> function</p>
+
+<div class="code">local mynewstruct = mystruct:__dup()
+</div>
+
+<h3>Customizeable method table for struct and union types</h3>
+
+<p>You can easily extend struct and union types, that have been registered via luacwrap.
+E.g. you have registered a rect structure under the name RECT, then you can add <br/>
+methods simply by adding them to the RECT type descriptor.</p>
+
+<div class="code">function RECT:width()
+  return self.right - self.left
+end
+
+function RECT:height()
+    return self.bottom - self.top
+end
+
+function RECT:size()
+    return { width  = self.right - self.left,
+             height = self.bottom - self.top }
+end
+</div>
+
+<p>After that you can use these methods as follows:</p>
+
+<div class="code">local rc = RECT:new()
+rc.set{ top=10; left=10; bottom=100; right=100 }
+print(rc:width(), rc:height())
+</div>
+
 <h2>C-API</h2>
 
 <h3>Registering type descriptors</h3>
@@ -161,14 +362,7 @@ local wrap = TESTSTRUCT:attach(udata)     -- attach descriptor to (light) user d
 <h4>Register array types</h4>
 
 <div class="code">// describe array type
-luacwrap_ArrayType regType_INT32_4 =
-{
-  LUACWRAP_TC_ARRAY,
-  "INT32_4",
-  4,
-  sizeof(INT32),
-  "$i32"
-};
+LUACWRAP_DEFINEARRAY(LIBRARYNAME, INT32, 4)
 
 luacwrap_registertype(L, LUA_GLOBALSINDEX, &amp;regType_INT32_4.hdr);
 </div>
@@ -208,13 +402,10 @@ marshalling. Therefore registering basic types is only possible via the C API.
 Use the <code>luacwrap_registerbasictype</code> function and see the source of LuaCwrap
 for usage examples.</p>
 
-<h3>Create/Attach instances</h3>
+<h3>Create wrappers for local C objects (light embedded objects)</h3>
 
-<p>From the C API in most cases you push wrappers to static instances to call functions
-with parameters. </p>
-
-<p>Attention: Wrappers are alive during the function call and not beyond.
-It's definitely not a good idea to store them within the called function for later use.</p>
+<p>From the C API in most cases you push wrapper objects (light embedded objects) to static 
+instances to call functions with parameters. </p>
 
 <div class="code">// static instance
 TESTSTRUCT ud = { 0 };
@@ -233,9 +424,65 @@ luacwrap_pushtypedptr(L, &amp;regType_TESTSTRUCT.hdr, &amp;ud);
 lua_call(L, 1, 0);
 </div>
 
+<p>From Lua you use the instance as follows:</p>
+
+<div class="code">function myfunction(teststruct)
+  print(teststruct.u8)
+end
+</div>
+
+
+<div class="attention">
+These wrappers are alive only during the function call.
+It's definitely not a good idea to store them within the called function, e.g. in a global Lua variable or table. 
+If you really have to, use the <code>object:__dup()</code> method to create a clone, which lifetime is controlled
+by the Lua VM.
+</div>
+
+
+<h3>Attach to userdata</h3>
+
+<p>With the <code>typedesc:attach()</code> function you can attach a light embedded object to an 
+Lua userdata object which is interpreted as a pointer address. The above C sample could be modified 
+like this:</p>
+
+<div class="code">// static instance
+TESTSTRUCT ud = { 0 };
+
+// fill struct with data
+ud.u8  =   8;
+ud.i8  =  -8;
+...
+
+// call "myfunction" with wrapped object as parameter 1
+lua_getglobal(L, "myfunction");
+
+// push wrapper
+lua_pushlightuserdata(L, &amp;ud);
+
+lua_call(L, 1, 0);
+</div>
+
+<p>From Lua you access the instance as follows:</p>
+
+<div class="code">function myfunction(pointer)
+  local teststruct = TESTSTRUCT:attach(pointer)
+  print(teststruct.u8)
+end
+</div>
+
+
+<div class="attention">
+Because LuaCwrap allows to attach wrappers to existing userdata (pointers) it is not safe 
+according to the Lua book. Common errors will be detected by LuaCwrap, but as the <code>attach</code>
+method acts like a C cast many things could go wrong. So if you use <code>attach</code> be sure 
+you know what you are doing.
+</div>
+
+
+<h3></h3>
 
 <h1>Internals</h1>
-
 
 <h2>Module table _M</h2>
 
@@ -246,7 +493,10 @@ The module table contains:</p>
     <li>helper functions (e.g. tabletostring, getfield, setfield)</li>
     <li>register functions (registerbuffer, registerarray, registerstruct)</li>
     <li>buffer creation function (createbuffer)</li>
+    <li>reference release function (releasereference)</li>
     <li>types table (_M.types)</li>
+    <li>reference table (_M.reftable)</li>
+    <li>string table (_M.stringtable)</li>
 </ul>
 
 <h2>Type descriptor table _M.types</h2>
@@ -262,12 +512,21 @@ These are</p>
     <li>$i32, $u32 (signed/unsigned long)</li>
     <li>$flt, $dbl (float, double)</li>
     <li>$ptr       (pointer types)</li>
-    <li>$ref       (reference type utilizing the lua reference mechanism)</li>
+    <li>$ref       (reference type utilizing the Lua reference mechanism)</li>
+    <li>$bufn      (buffer with length n, e.g. $buf128)</li>
 </ul>
 
 <p>Buffers are registered within the type table, too. The name of buffer types is derived
-from the buffer length ($buf*, where * denotes the buffer length).
+from the buffer length ($bufn, where n denotes the buffer length).
 If a buffer with the requested size is already registered, the existing one is returned.</p>
+
+<h2>Reference table _M.reftable</h2>
+
+<p>This table is used to control the lifetime of reference attributes ($ref).</p>
+
+<h2>String table _M.stringtable</h2>
+
+<p>Used by the register function to store unique strings used within type descriptors.</p>
 
 <h1>License</h1>
 

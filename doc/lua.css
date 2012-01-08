@@ -44,9 +44,17 @@ code {
 }
 
 .code {
+  margin-top: 0.5em;
   font-family: monospace;
   padding: 0.5em;
   border: 1px solid #808080;
   background-color: #E0E0FF;
   white-space:pre;
+}
+
+.attention {
+  margin-top: 0.5em;
+  padding: 0.5em;
+  color: #FF0E0E;
+  border: 1px solid #808080;
 }

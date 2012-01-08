@@ -16,6 +16,8 @@
 #include "luacwrap.h"
 #include "wrapnumeric.h"
 
+// enable this to add reserved __ptr attribute for debugging
+// #define LUACWRAP_DEBUG_PTR
 
 // address of this string is used as key to register module table _M
 const char* g_keyLibraryTable = "luacwrap";
@@ -318,6 +320,7 @@ int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* desc)
       }
   }
 
+#ifdef LUACWRAP_DEBUG_PTR
   // special handling for __ptr
   stridx = lua_tostring(L, 2);
   if (0 == strcmp("__ptr", stridx))
@@ -328,7 +331,8 @@ int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* desc)
     LUASTACK_CLEAN(L, 1);
     return 1;
   }
-
+#endif
+  
   LUASTACK_CLEAN(L, 0);
   return 0;
 }
@@ -782,18 +786,6 @@ luaL_reg g_mtEmbedded[ ] = {
 
   Pushes an embedded object reference onto the lua stack
 
-  userdata
-  +-----------------+<----,     +--------------+<---- userdata
-  |                 |     '-----| outer        |        metatable
-  |                 |           +--------------+          [__index]     -> Embedded_index
-  +-----------------+<----------| offset       |          [__newindex]  -> Embedded_newindex
-  | Embedded object |           +--------------+          [__tostring]  -> Embedded_tostring
-  |                 |                                     [__len]       -> Embedded_len
-  +-----------------+                                   environment
-  |                 |                                     [$desc]       -> typedescriptor
-  |                 |
-  +-----------------+
-
 *////////////////////////////////////////////////////////////////////////
 int  pushEmbedded(lua_State* L, int ud, int offset, luacwrap_Type* desc)
 {
@@ -892,9 +884,9 @@ int  getEmbedded(lua_State* L, int ud, int offset, const char* typname)
   buffer then the value is written to the object.
 
   Parameters on lua stack:
-  - self  (userdata, embedded object)  -3
-  - index                              -2
-  - value                              -1
+    - self  (userdata, embedded object)  -3
+    - index                              -2
+    - value                              -1
 
 *////////////////////////////////////////////////////////////////////////
 int setEmbedded(lua_State* L, int offset, const char* typname)
@@ -965,8 +957,8 @@ int setEmbedded(lua_State* L, int offset, const char* typname)
   Implements the __index metamethod for boxed (outer) objects.
 
   Parameters on lua stack:
-  - self  (userdata, embedded object)
-  - index
+    - self  (userdata, embedded object)
+    - index
 
 *////////////////////////////////////////////////////////////////////////
 int Boxed_index(lua_State* L)
@@ -1026,7 +1018,7 @@ int Boxed_len(lua_State* L)
   Implements the __tostring metamethod for boxed (outer) objects.
 
   Parameters on lua stack:
-  - self  (userdata, embedded object)
+    - self  (userdata, embedded object)
 
 *////////////////////////////////////////////////////////////////////////
 int Boxed_tostring(lua_State* L)
@@ -1054,22 +1046,9 @@ luaL_reg g_mtBoxed[ ] = {
     - attaches the metatable for boxed objects
     - adds a type descriptor to environment[$desc]
 
-  userdata
-  +-----------------+<------------------- userdata
-  |                 |                       metatable
-  |                 |                         [__index]     -> Boxed_index
-  +-----------------+                         [__newindex]  -> Boxed_newindex
-  | Embedded object |                         [__tostring]  -> Boxed_tostring
-  |                 |                         [__len]       -> Boxed_len
-  +-----------------+                       environment
-  |                 |                         [$desc]       -> typedescriptor
-  |                 |                         [$methods]    -> method table
-  +-----------------+
-
-
   Parameters on lua stack:
-  - self  (type descriptor)
-  - init parameter (optional)
+    - self  (type descriptor)
+    - init parameter (optional)
 
 *////////////////////////////////////////////////////////////////////////
 int luacwrap_type_new(lua_State* L)
@@ -1077,6 +1056,7 @@ int luacwrap_type_new(lua_State* L)
   luacwrap_Type* desc;
   size_t udsize;
   void* ud;
+  int noinitparam = lua_isnoneornil(L, 2);
 
   LUASTACK_SET(L);
 
@@ -1107,7 +1087,6 @@ int luacwrap_type_new(lua_State* L)
 
   // create userdata which holds type instance
   ud = lua_newuserdata(L, udsize);
-  memset(ud, 0, udsize);
 
   // get/attach metatable
   lua_pushlightuserdata(L, (void*)&g_mtBoxed);
@@ -1121,16 +1100,29 @@ int luacwrap_type_new(lua_State* L)
   lua_pushvalue(L, 1);
   lua_setfield(L, -2, "$methods");
   lua_setfenv(L, -2);
-  
-  // if optional init parameter present then call set()
-  if (!lua_isnil(L, 2))
-  {
-    lua_pushcfunction(L, luacwrap_type_set);
-    lua_pushvalue(L, -2);     // push userdata
-    lua_pushvalue(L, 2);      // push value
-    lua_call(L, 2, 0);        // call set()
-  }
 
+  // if optional init parameter present then call set()
+  if (noinitparam)
+  {
+    // by default clear memory
+    memset(ud, 0, udsize);
+  }
+  else
+  {
+    if (lua_isnumber(L, 2))
+    {
+      // init memory with a given value
+      memset(ud, lua_tointeger(L, 2), udsize);
+    }
+    else
+    {
+      lua_pushcfunction(L, luacwrap_type_set);
+      lua_pushvalue(L, -2);     // push userdata
+      lua_pushvalue(L,  2);     // push value
+      lua_call(L, 2, 0);        // call set()
+    }
+  }
+  
   LUASTACK_CLEAN(L, 1);
   return 1;
 }
@@ -1142,12 +1134,14 @@ int luacwrap_type_new(lua_State* L)
 
 *////////////////////////////////////////////////////////////////////////
 LUACWRAP_API  void* luacwrap_checktype   ( lua_State*          L
-                           , int                 ud
-                           , luacwrap_Type*      desc)
+                                         , int                 ud
+                                         , luacwrap_Type*      desc)
 {
-  void* result;
+  int isembedded;
   luacwrap_Type* uddesc;
 
+  LUASTACK_SET(L);
+  
   uddesc = luacwrap_getdescriptor(L, ud);
   if (desc != uddesc)
   {
@@ -1156,12 +1150,33 @@ LUACWRAP_API  void* luacwrap_checktype   ( lua_State*          L
       , desc ? desc->name : "nil", uddesc ? uddesc->name : "nil", ud);
   }
 
-  // get address
-  lua_getfield(L, ud, "__ptr");
-  result = lua_touserdata(L, -1);
-  lua_pop(L, 1);
+  // getting address depends on wether this is a boxed or an embedded object
+  lua_getmetatable(L, ud);
+  lua_pushlightuserdata(L, (void*)&g_mtEmbedded);
+  lua_rawget(L, LUA_REGISTRYINDEX);
+  assert(lua_istable(L, -2));
+  assert(lua_istable(L, -1));
+  isembedded = lua_rawequal(L, -1, -2);
+  lua_pop(L, 2);
+  if (isembedded)
+  {
+    PBYTE baseptr;
+    luacwrap_EmbeddedObject* pobj;
+    pobj = (luacwrap_EmbeddedObject*)lua_touserdata(L, ud);
 
-  return result;
+    // get pointer to outer object
+    lua_rawgeti(L, LUA_REGISTRYINDEX, pobj->outer);
+    baseptr = (PBYTE)lua_touserdata(L, -1);
+    
+    lua_pop(L, 1);
+    
+    // return base + offset
+    return baseptr + pobj->offset;
+  }
+
+  LUASTACK_CLEAN(L, 0);
+  
+  return lua_touserdata(L, ud);
 }
 
 
@@ -1189,21 +1204,9 @@ LUACWRAP_API int luacwrap_pushtypedptr(lua_State* L, luacwrap_Type* desc, void* 
 
   creates the attach() constructor method for boxed types.
 
-  userdata
-  +-----------------+<------------------- userdata
-  |                 |                       metatable
-  |                 |                         [__index]     -> Boxed_index
-  +-----------------+                         [__newindex]  -> Boxed_newindex
-  | Embedded object |                         [__tostring]  -> Boxed_tostring
-  |                 |                         [__len]       -> Boxed_len
-  +-----------------+                       environment
-  |                 |                         [$desc]       -> typedescriptor
-  |                 |
-  +-----------------+
-
   Parameters on lua stack:
-  - self    (userdata, embedded object)
-  - pointer (udata)
+    - self    (userdata, embedded object)
+    - pointer (udata)
 
 *////////////////////////////////////////////////////////////////////////
 int luacwrap_type_attach(lua_State* L)
@@ -1270,16 +1273,16 @@ static int luacwrap_type_set(lua_State* L)
   luacwrap_Type* desc;
 
   LUASTACK_SET(L);
-  
+
   // get descriptor
   desc = luacwrap_getdescriptor(L, 1);
-
-  switch(desc->typeclass)
+  
+  // init from table with init values
+  if (lua_istable(L, 2))
   {
-    case LUACWRAP_TC_RECORD: 
-      {
-        // check second parameter
-        if (lua_istable(L, 2))
+    switch(desc->typeclass)
+    {
+      case LUACWRAP_TC_RECORD: 
         {
           // try to get __newindex metamethod
           luaL_getmetafield(L, 1, "__newindex");
@@ -1308,14 +1311,12 @@ static int luacwrap_type_set(lua_State* L)
           // pop __newindex
           lua_pop(L, 1);
         }
-      }
-      break;
-    case LUACWRAP_TC_ARRAY :
-      {
-        int idx = 1;
-        // check second parameter
-        if (lua_istable(L, 2))
+        break;
+      case LUACWRAP_TC_ARRAY :
         {
+          int idx = 1;
+          // check second parameter
+
           // try to get __newindex metamethod
           luaL_getmetafield(L, 1, "__newindex");
           assert(LUA_TFUNCTION == lua_type(L, -1));
@@ -1351,18 +1352,23 @@ static int luacwrap_type_set(lua_State* L)
           // pop __newindex, __newindex, userdata, key and nil (value)
           lua_pop(L, 5);
         }
-      }
-      break;
-    case LUACWRAP_TC_BUFFER:
-      {
-        luaL_error(L, "Setting buffers via set/new is not supported, yet");
-      }
-      break;
-    case LUACWRAP_TC_BASIC :
-    default:
-      {
-        assert(0);
-      }
+        break;
+      case LUACWRAP_TC_BUFFER:
+        {
+          luaL_error(L, "Setting buffers via set/new is not supported, yet");
+        }
+        break;
+      case LUACWRAP_TC_BASIC :
+      default:
+        {
+          assert(0);
+        }
+    }
+  } 
+  else if (!lua_isnil(L, 2))
+  {
+    // check for object to copy init values from
+    luaL_error(L, "Initialization from other objects is not supported, yet");
   }
 
   // return ud (parameter 1) as first result
@@ -1372,7 +1378,7 @@ static int luacwrap_type_set(lua_State* L)
   return 1;
 }
 
-
+// used for static type descriptors
 luaL_reg g_mtTypeCtors[ ] = {
   { "new"   , luacwrap_type_new     },
   { "set"   , luacwrap_type_set     },
@@ -1406,13 +1412,13 @@ int luacwrap_malloc_gc(lua_State* L)
   return 0;
 }
 
+// used for dynamically alloced type descriptors
 luaL_reg g_mtDynTypeCtors[ ] = {
   { "new"   , luacwrap_type_new     },
   { "attach", luacwrap_type_attach  },
   { "__gc",   luacwrap_malloc_gc  },
   { NULL, NULL }
 };
-
 
 //////////////////////////////////////////////////////////////////////////
 /**
@@ -1449,10 +1455,10 @@ LUACWRAP_API int luacwrap_registerbasictype(lua_State* L, luacwrap_BasicType* de
 
   // lua stack
   //  1: type descriptor
-  //  1: typename
-  //  1: _M.types
-  //  2: func "setfield"
-  //  1: _M
+  //  2: typename
+  //  3: _M.types
+  //  4: func "setfield"
+  //  5: _M
 
   // check if type is already registered within _M
   lua_getfield(L, -5, "getfield");
@@ -1600,6 +1606,7 @@ int luacwrap_reference_index(lua_State *L)
   return 0;
 }
 
+// metatable for references
 luaL_reg g_mtReferences[ ] = {
   { "__index", luacwrap_reference_index },
   { NULL, NULL }
@@ -1658,7 +1665,6 @@ int* luacwrap_toreference(lua_State* L, int index)
   luaL_typerror(L, index, "luacwrap reference");
   return NULL;
 }
-
 
 //////////////////////////////////////////////////////////////////////////
 /**
@@ -1995,14 +2001,12 @@ int luacwrap_create_dyntype( lua_State*       L
 
   Registers a buffer type
 
-  @param[in]  L             lua state
-
   Parameters on lua stack:
     - name ("buffer")
     - size in bytes (8)
 
 */////////////////////////////////////////////////////////////////////////
-int luacwrap_registerbuffer(lua_State*       L)
+static int luacwrap_registerbuffer(lua_State*       L)
 {
   luacwrap_BufferType* bufdesc;
   const char* name;
@@ -2031,8 +2035,6 @@ int luacwrap_registerbuffer(lua_State*       L)
 
   Registers a struct type
 
-  @param[in]  L             lua state
-
   Parameters on lua stack:
     - name ("TESTSTRUCT")
     - size (8)
@@ -2041,7 +2043,7 @@ int luacwrap_registerbuffer(lua_State*       L)
         { "member1", 4, "$i32" }
 
 */////////////////////////////////////////////////////////////////////////
-int luacwrap_registerstruct( lua_State*       L)
+static int luacwrap_registerstruct( lua_State*       L)
 {
   luacwrap_RecordType* recdesc;
   luacwrap_RecordMember* member;
@@ -2109,15 +2111,13 @@ int luacwrap_registerstruct( lua_State*       L)
 
   Registers an array type
 
-  @param[in]  L             lua state
-
   Parameters on lua stack:
     - name ("INT32_8")
     - numelems (8)
     - elementtxpe ("$i32")
 
 */////////////////////////////////////////////////////////////////////////
-int luacwrap_registerarray( lua_State*       L)
+static int luacwrap_registerarray( lua_State*       L)
 {
   luacwrap_ArrayType* arrdesc;
   const char* name;
@@ -2168,13 +2168,11 @@ int luacwrap_registerarray( lua_State*       L)
 
   Creates a buffer with the given size
 
-  @param[in]  L             lua state
-
   Parameters on lua stack:
     - size (16)
 
 */////////////////////////////////////////////////////////////////////////
-int luacwrap_createbuffer(lua_State*       L)
+static int luacwrap_createbuffer(lua_State*       L)
 {
   int bufsize;
 
