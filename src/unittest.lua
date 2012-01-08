@@ -45,19 +45,19 @@ assert(struct.intarray[4] == 40)
 
 print("--> test table assignment")
 struct:set{
-        u8  = 91,
-        i8  = 92,
-        u16 = 93,
-        i16 = 94,
-        u32 = 95,
-        i32 = 96,
-        ptr = "hello",
-        chararray = "hello",
-        intarray = { 19,
-                                 29,
-                                 39,
-                                 49,
-        }
+	u8  = 91,
+	i8  = 92,
+	u16 = 93,
+	i16 = 94,
+	u32 = 95,
+	i32 = 96,
+	ptr = "hello",
+	chararray = "hello",
+	intarray = { 19,
+				 29,
+ 				 39,
+ 				 49,
+	}
 }
 
 assert(struct.u8  == 91)
@@ -75,19 +75,19 @@ assert(struct.intarray[4] == 49)
 
 print("--> test new with table assignment")
 struct = TESTSTRUCT:new{
-        u8  = 91,
-        i8  = 92,
-        u16 = 93,
-        i16 = 94,
-        u32 = 95,
-        i32 = 96,
-        ptr = "hello",
-        chararray = "hello",
-        intarray = { 19,
-                                 29,
-                                 39,
-                                 49,
-        }
+	u8  = 91,
+	i8  = 92,
+	u16 = 93,
+	i16 = 94,
+	u32 = 95,
+	i32 = 96,
+	ptr = "hello",
+	chararray = "hello",
+	intarray = { 19,
+				 29,
+ 				 39,
+ 				 49,
+	}
 }
 
 assert(struct.u8  == 91)
@@ -102,6 +102,51 @@ assert(struct.intarray[1] == 19)
 assert(struct.intarray[2] == 29)
 assert(struct.intarray[3] == 39)
 assert(struct.intarray[4] == 49)
+
+--[[
+print("--> test new with assignment")
+struct2 = TESTSTRUCT:new(struct)
+
+print(struct2)
+
+assert(struct2.u8  == 91)
+assert(struct2.i8  == 92)
+assert(struct2.u16 == 93)
+assert(struct2.i16 == 94)
+assert(struct2.u32 == 95)
+assert(struct2.i32 == 96)
+assert(struct2.ptr == "hello")
+assert(struct2.chararray == "hello\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
+assert(struct2.intarray[1] == 19)
+assert(struct2.intarray[2] == 29)
+assert(struct2.intarray[3] == 39)
+assert(struct2.intarray[4] == 49)
+--]]
+
+print("--> test new with assignment")
+for k, v in pairs(getmetatable(struct)) do
+	print(k, v)
+end
+
+
+
+struct2 = struct:__dup()
+
+print(struct2)
+
+assert(struct2.u8  == 91)
+assert(struct2.i8  == 92)
+assert(struct2.u16 == 93)
+assert(struct2.i16 == 94)
+assert(struct2.u32 == 95)
+assert(struct2.i32 == 96)
+assert(struct2.ptr == "hello")
+assert(struct2.chararray == "hello\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
+assert(struct2.intarray[1] == 19)
+assert(struct2.intarray[2] == 29)
+assert(struct2.intarray[3] == 39)
+assert(struct2.intarray[4] == 49)
+
 
 -- check sizes
 print("--> check __len")
