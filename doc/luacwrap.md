@@ -39,11 +39,14 @@ Install Lua and the development files we depend on
 
 * Start a console and change to the directory where the luacwrap source is located
 * Start make
-    make
+
+    `make`
+
 * This creates two shared libraries (luacwrap.1.0.0.so and testluacwrap.1.0.0.so) within ./src
   The necessary links needed to execute the unittest.lua within ./src are also created.
 * You can execute the unittests via
-    make test
+
+    `make test`
 
 ### Installation
 
@@ -66,7 +69,7 @@ Install Lua for Windows from http://luaforwindows.googlecode.com/
 
 * Edit ./etc/msvc.bat and set the correct path to the Lua for Windows header and library files.
 * Open a Visual Studio .NET Command Prompt
-* Change path to the luacwrap root directory
+* Change path to the LuaCwrap root directory
 * Execute
 
     etc\msvc.bat
@@ -175,7 +178,7 @@ reference manually (via `refobject:release()`).
 
 Embedded objects can also be used to push C pointers during calls from C to Lua. But in this case you 
 hav to be aware that in most cases the C pointer isn't valid after the Lua function scope ends. 
-If you want's to store the referenced value you have to duplicate the underlying instance via 
+If you want to store the referenced value you have to duplicate the underlying instance via 
 <object>:__dup(), which creates a new boxed object.
 
     function callback_from_C(myobject)
@@ -185,17 +188,17 @@ If you want's to store the referenced value you have to duplicate the underlying
 <div class="attention">
 Another issue of C controlled objects is that they have no associated Lua environment table. 
 If you set pointer attributes to your own Lua objects, you have to take care that they don't 
-go out of scope. Otherwise the C function returned to could try to access memory that has 
-already been garbage collected. A good advice is to use light embedded objects only when 
-they do not contain pointer attributes.
+go out of scope. Otherwise the C function returned to after the assignment could try to access 
+memory that has already been garbage collected. A good advice is to use light embedded objects 
+only when they do not contain pointer attributes.
 </div>
 
 ## Dual interface
 
-The LuaCwrap exports several functions. One of them the luaopen_luacwrap
-function enables that LuaCwrap could be used from standalone Lua scripts.
+The LuaCwrap exports several functions. One of them, the `luaopen_luacwrap`
+function, enables that LuaCwrap could be used from standalone Lua scripts.
 The other functions could be bound to by C modules or executables
-to be able to declare object descriptors in C or to create/push object instances
+to be able to register object descriptors or to create/push object instances
 on the Lua stack.
 
 ## Lua-API
@@ -302,11 +305,6 @@ methods simply by adding them to the RECT type descriptor.
 
     function RECT:height()
         return self.bottom - self.top
-    end
-
-    function RECT:size()
-        return { width  = self.right - self.left,
-                 height = self.bottom - self.top }
     end
 
 After that you can use these methods as follows:

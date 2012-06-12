@@ -2,7 +2,7 @@
 <html>
 <head>
 	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-	<title>luacwrap</title>
+	<title>LuaCwrap</title>
 	<link rel="stylesheet" type="text/css" href="lua.css" />
 </head>
 <body>
@@ -51,13 +51,15 @@ to describe the layout and names of structures, unions, arrays and buffers.</p>
 <h3>Build from source</h3>
 
 <ul>
-    <li>Start a console and change to the directory where the luacwrap source is located</li>
-    <li>Start make
-    make</li>
-    <li>This creates two shared libraries (luacwrap.1.0.0.so and testluacwrap.1.0.0.so) within ./src
-    The necessary links needed to execute the unittest.lua within ./src are also created.</li>
-    <li>You can execute the unittests via
-    make test</li>
+    <li><p>Start a console and change to the directory where the luacwrap source is located</p></li>
+    <li><p>Start make</p>
+    
+    <p><code>make</code></p></li>
+    <li><p>This creates two shared libraries (luacwrap.1.0.0.so and testluacwrap.1.0.0.so) within ./src
+    The necessary links needed to execute the unittest.lua within ./src are also created.</p></li>
+    <li><p>You can execute the unittests via</p>
+    
+    <p><code>make test</code></p></li>
 </ul>
 
 <h3>Installation</h3>
@@ -83,7 +85,7 @@ enable LuaCwrap to be used as a shared library and a lua module.</p>
 <ul>
     <li><p>Edit ./etc/msvc.bat and set the correct path to the Lua for Windows header and library files.</p></li>
     <li><p>Open a Visual Studio .NET Command Prompt</p></li>
-    <li><p>Change path to the luacwrap root directory</p></li>
+    <li><p>Change path to the LuaCwrap root directory</p></li>
     <li><p>Execute</p>
     
     <p>etc\msvc.bat</p></li>
@@ -116,33 +118,7 @@ whereas Embedded objects reference 'embedded' objects within so called 'outer' o
 objects have to control the lifetime of their outmost boxed object.</p>
 
 
-<pre id="boxedobject" class="textdiagram">
-
-            Boxed object (userdata )
-     +----->+-----------------+--------+------------->metatable
-     |      |cBLU             |        |                __index     Boxed_index
-     |      |                 |        |                __newindex  Boxed_newindex
-     |      |object data      |        |                __tostring  Boxed_tostring
-     |      |                 |        |                __len       Boxed_len
-     |      |                 |        |
-     |  +-->+-----------------+        +------------->environment
-     |  |   |c1FF             |                         $desc     typedescriptor
-     |  |   +-----------------+                         pointer references (offset as key)
-     |  |   |cBLU             |
-     |  |   +-----------------+ 
-     |  |
-     |  |   Embedded object (userdata)
-     |  |   +-----------------+--------+------------->metatable
-     +------|outer            |        |                __index     Embedded_index
-        |   +-----------------+        |                __newindex  Embedded_newindex
-        +---|offset           |        |                __tostring  Embedded_tostring
-            +-----------------+        |                __len       Embedded_len
-                                       |                __gc        Embedded_gc
-                                       |
-                                       +------------->environment
-                                                        $desc     typedescriptor
-
-</pre>
+<img src="images/boxedobject.png" />
 
 
 <h3>Pointer attributes</h3>
@@ -169,38 +145,12 @@ reference manually (via <code>refobject:release()</code>). </p>
 <h3>Light embedded objects</h3>
 
 
-<pre id="cobjects" class="textdiagram">
-
-            light userdata              C object
-     +----->+-----------------+   +-->+-----------------+
-     |      |                 |---+   |cBLU             |
-     |      +-----------------+       |                 |
-     |                                |object data      |
-     |                                |                 |
-     |                                |                 |
-     |  +---------------------------->+-----------------+
-     |  |                             |c1FF             |
-     |  |                             +-----------------+
-     |  |                             |cBLU             |
-     |  |                             +-----------------+ 
-     |  |
-     |  |   Embedded object (userdata)
-     |  |   +-----------------+--------+------------->metatable
-     +------|outer            |        |                __index     Embedded_index
-        |   +-----------------+        |                __newindex  Embedded_newindex
-        +---|offset           |        |                __tostring  Embedded_tostring
-            +-----------------+        |                __len       Embedded_len
-                                       |                __gc        Embedded_gc
-                                       |
-                                       +------------->environment
-                                                        $desc     typedescriptor
-
-</pre>
+<img src="images/cobjects.png" />
 
 
 <p>Embedded objects can also be used to push C pointers during calls from C to Lua. But in this case you 
 hav to be aware that in most cases the C pointer isn't valid after the Lua function scope ends. 
-If you want's to store the referenced value you have to duplicate the underlying instance via 
+If you want to store the referenced value you have to duplicate the underlying instance via 
 <object>:__dup(), which creates a new boxed object.</p>
 
 <div class="code">function callback_from_C(myobject)
@@ -212,18 +162,18 @@ end
 <div class="attention">
 Another issue of C controlled objects is that they have no associated Lua environment table. 
 If you set pointer attributes to your own Lua objects, you have to take care that they don't 
-go out of scope. Otherwise the C function returned to could try to access memory that has 
-already been garbage collected. A good advice is to use light embedded objects only when 
-they do not contain pointer attributes.
+go out of scope. Otherwise the C function returned to after the assignment could try to access 
+memory that has already been garbage collected. A good advice is to use light embedded objects 
+only when they do not contain pointer attributes.
 </div>
 
 
 <h2>Dual interface</h2>
 
-<p>The LuaCwrap exports several functions. One of them the luaopen_luacwrap
-function enables that LuaCwrap could be used from standalone Lua scripts.
+<p>The LuaCwrap exports several functions. One of them, the <code>luaopen_luacwrap</code>
+function, enables that LuaCwrap could be used from standalone Lua scripts.
 The other functions could be bound to by C modules or executables
-to be able to declare object descriptors in C or to create/push object instances
+to be able to register object descriptors or to create/push object instances
 on the Lua stack.</p>
 
 <h2>Lua-API</h2>
@@ -340,11 +290,6 @@ end
 
 function RECT:height()
     return self.bottom - self.top
-end
-
-function RECT:size()
-    return { width  = self.right - self.left,
-             height = self.bottom - self.top }
 end
 </div>
 
