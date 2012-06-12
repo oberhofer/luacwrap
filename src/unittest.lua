@@ -12,8 +12,12 @@ assert(0 == struct.ref.ref)
 
 -- print adresses
 print("--> print adresses (__ptr)")
-print(struct.__ptr)
-print(struct.intarray.__ptr)
+print("struct.__ptr", struct.__ptr)
+print("struct.intarray.__ptr", struct.intarray.__ptr)
+print("struct.inner.__ptr", struct.inner.__ptr)
+
+-- print psztext member
+print("struct.inner.pszText", struct.inner.pszText)
 
 print("--> test assignment")
 struct.u8  = 11
@@ -45,19 +49,19 @@ assert(struct.intarray[4] == 40)
 
 print("--> test table assignment")
 struct:set{
-	u8  = 91,
-	i8  = 92,
-	u16 = 93,
-	i16 = 94,
-	u32 = 95,
-	i32 = 96,
-	ptr = "hello",
-	chararray = "hello",
-	intarray = { 19,
-				 29,
- 				 39,
- 				 49,
-	}
+        u8  = 91,
+        i8  = 92,
+        u16 = 93,
+        i16 = 94,
+        u32 = 95,
+        i32 = 96,
+        ptr = "hello",
+        chararray = "hello",
+        intarray = { 19,
+                                 29,
+                                 39,
+                                 49,
+        },
 }
 
 assert(struct.u8  == 91)
@@ -75,19 +79,19 @@ assert(struct.intarray[4] == 49)
 
 print("--> test new with table assignment")
 struct = TESTSTRUCT:new{
-	u8  = 91,
-	i8  = 92,
-	u16 = 93,
-	i16 = 94,
-	u32 = 95,
-	i32 = 96,
-	ptr = "hello",
-	chararray = "hello",
-	intarray = { 19,
-				 29,
- 				 39,
- 				 49,
-	}
+        u8  = 91,
+        i8  = 92,
+        u16 = 93,
+        i16 = 94,
+        u32 = 95,
+        i32 = 96,
+        ptr = "hello",
+        chararray = "hello",
+        intarray = { 19,
+                                 29,
+                                 39,
+                                 49,
+        }
 }
 
 assert(struct.u8  == 91)
@@ -102,6 +106,8 @@ assert(struct.intarray[1] == 19)
 assert(struct.intarray[2] == 29)
 assert(struct.intarray[3] == 39)
 assert(struct.intarray[4] == 49)
+
+print("struct.inner.pszText", struct.inner.pszText)
 
 --[[
 print("--> test new with assignment")
@@ -125,7 +131,7 @@ assert(struct2.intarray[4] == 49)
 
 print("--> test new with assignment")
 for k, v in pairs(getmetatable(struct)) do
-	print(k, v)
+        print(k, v)
 end
 
 
@@ -159,6 +165,8 @@ print("--> print")
 print(struct)
 print("struct.__ptr", struct.__ptr)
 print("struct.inner.__ptr", struct.inner.__ptr)
+print("struct.ptr", struct.ptr)
+print("struct.inner.pszText", struct.inner.pszText)
 
 print("--> internal print")
 print(testluacwrap.printTESTSTRUCT(struct))

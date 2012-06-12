@@ -1225,6 +1225,7 @@ static int luacwrap_type_new(lua_State* L)
     }
     else
     {
+      memset(ud, 0, udsize);
       lua_pushcfunction(L, luacwrap_type_set);
       lua_pushvalue(L, -2);         // push userdata
       lua_pushvalue(L,  2);         // push value
@@ -2172,6 +2173,8 @@ static int luacwrap_create_dyntype( lua_State*       L
 
   Registers a buffer type
 
+  @param[in]  L             lua state
+
   Parameters on lua stack:
     - name ("buffer")
     - size in bytes (8)
@@ -2205,6 +2208,8 @@ static int luacwrap_registerbuffer(lua_State*       L)
 /**
 
   Registers a struct type
+
+  @param[in]  L             lua state
 
   Parameters on lua stack:
     - name ("TESTSTRUCT")
@@ -2260,17 +2265,18 @@ static int luacwrap_registerstruct( lua_State*       L)
 
     lua_rawgeti(L, 3, idx);
     lua_rawgeti(L, -1, 1);
-    membername = luacwrap_storestring(L, -1, "non empty string expected for member name on index #%d", idx);
+    membername = luacwrap_storestring(L, abs_index(L, -1), "non empty string expected for member name on index #%d", idx);
     lua_rawgeti(L, -2, 2);
     memberoffset = lua_tointeger(L, -1);
 
     lua_rawgeti(L, -3, 3);
-    membertypename = luacwrap_storestring(L, -1, "non empty string expected for member type name on index #%d", idx);
+    membertypename = luacwrap_storestring(L, abs_index(L, -1), "non empty string expected for member type name on index #%d", idx);
 
     member->name = membername;
     member->offset = memberoffset;
     member->typname = membertypename;
 
+    lua_pop(L, 4);
     ++member;
     ++idx;
   }
@@ -2287,6 +2293,8 @@ static int luacwrap_registerstruct( lua_State*       L)
 /**
 
   Registers an array type
+
+  @param[in]  L             lua state
 
   Parameters on lua stack:
     - name ("INT32_8")
@@ -2344,6 +2352,8 @@ static int luacwrap_registerarray( lua_State*       L)
 /**
 
   Creates a buffer with the given size
+
+  @param[in]  L             lua state
 
   Parameters on lua stack:
     - size (16)

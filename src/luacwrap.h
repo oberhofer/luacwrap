@@ -115,7 +115,9 @@ typedef unsigned short  UINT16;
 typedef signed int      INT32;
 typedef unsigned int    UINT32;
 
-
+//
+// type classes
+//
 #define LUACWRAP_TC_BASIC       0
 #define LUACWRAP_TC_RECORD      1
 #define LUACWRAP_TC_ARRAY       2

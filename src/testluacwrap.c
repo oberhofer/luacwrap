@@ -121,7 +121,10 @@ int printTESTSTRUCT(lua_State* L)
 
   LUASTACK_SET(L);
 
+  printf("----printTESTSTRUCT %s\n", lua_typename(L, lua_type(L, 1)));
+
   ud = (TESTSTRUCT*)luacwrap_checktype(L, 1, &regType_TESTSTRUCT.hdr);
+  printf("printTESTSTRUCT %p\n", ud);
   
   sprintf(szTemp, "TESTSTRUCT %p\n{\nu8:%i,\ni8:%i,\nu16:%i,\ni16:%i,\nu32:%i,\ni32:%i,\nptr:%p (%s),\nref:%i,\ninner.pszText:%p (%s)\n}\n", 
     ud,
@@ -207,6 +210,8 @@ int callwithwrappedTESTSTRUCT(lua_State* L)
   ud.i32 = -32;
   // ud.ptr = "a ptr, too";
 
+  printf("callwithwrappedTESTSTRUCT %p\n", &ud);
+  
   // expects a function as parameter
   if (lua_isfunction(L, 1))
   {
