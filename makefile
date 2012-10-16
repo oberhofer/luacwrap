@@ -26,6 +26,7 @@ install: all
 	# enable -llua5.1-luacwrap for gcc
 	$(INSTALL_LINK) $(INSTALL_TOP_LIB)/$(LUACWRAP_VNAME) $(INSTALL_TOP_LIB)/$(LUACWRAP_LIBNAME).$(EXT)
 	# enable require("luacwrap") within lua scripts
+	sudo mkdir -p $(INSTALL_LUA_LIB)
 	$(INSTALL_LINK) $(INSTALL_TOP_LIB)/$(LUACWRAP_VNAME) $(INSTALL_LUA_LIB)/luacwrap.$(EXT)
 	# update linker cache
 	sudo ldconfig
