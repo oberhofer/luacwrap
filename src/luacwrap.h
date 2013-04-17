@@ -300,6 +300,13 @@ LUACWRAP_API void* luacwrap_checktype   ( lua_State*            L
                                         , luacwrap_Type*        desc);
 
 //
+// create a boxed object on the top of the Lua stack, use initval to fill memory
+//
+LUACWRAP_API void* luacwrap_pushboxedobj( lua_State*            L
+                                        , luacwrap_Type*        desc
+                                        , int                   initval);
+
+//
 // push a pointer as a typed light (means not garbage collected) object 
 //
 LUACWRAP_API int luacwrap_pushtypedptr  ( lua_State*            L

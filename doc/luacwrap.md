@@ -391,6 +391,34 @@ If you really have to, use the <code>object:__dup()</code> method to create a cl
 by the Lua VM.
 </div>
 
+### Create boxed instances
+
+Lifetime of boxed objects is maintained by the Lua garbage collector. To create them from the C API 
+you use the luacwrap_pushboxedobj() function. 
+
+    TESTSTRUCT* ud;
+  
+    // call "myfunction" with boxed object as parameter 1
+    lua_getglobal(L, "myfunction");
+
+    ud = (TESTSTRUCT*)luacwrap_pushboxedobj(L, &regType_TESTSTRUCT.hdr, 0);
+    
+    ud->u8  =   8;
+    ud->i8  =  -8;
+    ud->u16 =  16;
+    ud->i16 = -16;
+    ud->u32 =  32;
+    ud->i32 = -32;
+    ud->ptr =  "a ptr";
+    
+    lua_call(L, 1, 0);
+
+From Lua you use the instance as follows:
+
+    function myfunction(teststruct)
+      print(teststruct.u8)
+    end
+
 ### Attach to userdata
 
 With the `typedesc:attach()` function you can attach a light embedded object to an 

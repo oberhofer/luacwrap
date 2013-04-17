@@ -118,7 +118,33 @@ whereas Embedded objects reference 'embedded' objects within so called 'outer' o
 objects have to control the lifetime of their outmost boxed object.</p>
 
 
-<img src="images/boxedobject.png" />
+<pre id="boxedobject" class="textdiagram">
+
+            Boxed object (userdata )
+     +----->+-----------------+--------+------------->metatable
+     |      |cBLU             |        |                __index     Boxed_index
+     |      |                 |        |                __newindex  Boxed_newindex
+     |      |object data      |        |                __tostring  Boxed_tostring
+     |      |                 |        |                __len       Boxed_len
+     |      |                 |        |
+     |  +-->+-----------------+        +------------->environment
+     |  |   |c1FF             |                         $desc     typedescriptor
+     |  |   +-----------------+                         pointer references (offset as key)
+     |  |   |cBLU             |
+     |  |   +-----------------+ 
+     |  |
+     |  |   Embedded object (userdata)
+     |  |   +-----------------+--------+------------->metatable
+     +------|outer            |        |                __index     Embedded_index
+        |   +-----------------+        |                __newindex  Embedded_newindex
+        +---|offset           |        |                __tostring  Embedded_tostring
+            +-----------------+        |                __len       Embedded_len
+                                       |                __gc        Embedded_gc
+                                       |
+                                       +------------->environment
+                                                        $desc     typedescriptor
+
+</pre>
 
 
 <h3>Pointer attributes</h3>
@@ -145,7 +171,33 @@ reference manually (via <code>refobject:release()</code>). </p>
 <h3>Light embedded objects</h3>
 
 
-<img src="images/cobjects.png" />
+<pre id="cobjects" class="textdiagram">
+
+            light userdata              C object
+     +----->+-----------------+   +-->+-----------------+
+     |      |                 |---+   |cBLU             |
+     |      +-----------------+       |                 |
+     |                                |object data      |
+     |                                |                 |
+     |                                |                 |
+     |  +---------------------------->+-----------------+
+     |  |                             |c1FF             |
+     |  |                             +-----------------+
+     |  |                             |cBLU             |
+     |  |                             +-----------------+ 
+     |  |
+     |  |   Embedded object (userdata)
+     |  |   +-----------------+--------+------------->metatable
+     +------|outer            |        |                __index     Embedded_index
+        |   +-----------------+        |                __newindex  Embedded_newindex
+        +---|offset           |        |                __tostring  Embedded_tostring
+            +-----------------+        |                __len       Embedded_len
+                                       |                __gc        Embedded_gc
+                                       |
+                                       +------------->environment
+                                                        $desc     typedescriptor
+
+</pre>
 
 
 <p>Embedded objects can also be used to push C pointers during calls from C to Lua. But in this case you 
@@ -384,6 +436,36 @@ If you really have to, use the <code>object:__dup()</code> method to create a cl
 by the Lua VM.
 </div>
 
+
+<h3>Create boxed instances</h3>
+
+<p>Lifetime of boxed objects is maintained by the Lua garbage collector. To create them from the C API 
+you use the luacwrap_pushboxedobj() function. </p>
+
+<div class="code">TESTSTRUCT* ud;
+
+// call "myfunction" with boxed object as parameter 1
+lua_getglobal(L, "myfunction");
+
+ud = (TESTSTRUCT*)luacwrap_pushboxedobj(L, &amp;regType_TESTSTRUCT.hdr, 0);
+
+ud-&gt;u8  =   8;
+ud-&gt;i8  =  -8;
+ud-&gt;u16 =  16;
+ud-&gt;i16 = -16;
+ud-&gt;u32 =  32;
+ud-&gt;i32 = -32;
+ud-&gt;ptr =  "a ptr";
+
+lua_call(L, 1, 0);
+</div>
+
+<p>From Lua you use the instance as follows:</p>
+
+<div class="code">function myfunction(teststruct)
+  print(teststruct.u8)
+end
+</div>
 
 <h3>Attach to userdata</h3>
 

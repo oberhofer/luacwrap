@@ -121,10 +121,7 @@ int printTESTSTRUCT(lua_State* L)
 
   LUASTACK_SET(L);
 
-  printf("----printTESTSTRUCT %s\n", lua_typename(L, lua_type(L, 1)));
-
   ud = (TESTSTRUCT*)luacwrap_checktype(L, 1, &regType_TESTSTRUCT.hdr);
-  printf("printTESTSTRUCT %p\n", ud);
   
   sprintf(szTemp, "TESTSTRUCT %p\n{\nu8:%i,\ni8:%i,\nu16:%i,\ni16:%i,\nu32:%i,\ni32:%i,\nptr:%p (%s),\nref:%i,\ninner.pszText:%p (%s)\n}\n", 
     ud,
@@ -155,7 +152,7 @@ int printTESTSTRUCT(lua_State* L)
 
   @param[in]  L  pointer lua state
   
-  @result pointer to TESTSTRUCT as light user data
+  @result always 0
 
 */////////////////////////////////////////////////////////////////////////
 int callwithTESTSTRUCT(lua_State* L)
@@ -177,6 +174,44 @@ int callwithTESTSTRUCT(lua_State* L)
   {
     lua_pushvalue(L, -1);
     lua_pushlightuserdata(L, &ud);
+    
+    lua_call(L, 1, 0);
+  }
+  
+  LUASTACK_CLEAN(L, 0);
+  return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  function which pushes a pointer to TESTSTRUCT as a boxed object
+
+  @param[in]  L  pointer lua state
+  
+  @result always 0
+
+*/////////////////////////////////////////////////////////////////////////
+int callwithBoxedTESTSTRUCT(lua_State* L)
+{
+  LUASTACK_SET(L);
+
+  // expects a function as parameter
+  if (lua_isfunction(L, -1))
+  {
+    TESTSTRUCT* ud;
+  
+    lua_pushvalue(L, -1);
+
+    ud = (TESTSTRUCT*)luacwrap_pushboxedobj(L, &regType_TESTSTRUCT.hdr, 0);
+    
+    ud->u8  =   8;
+    ud->i8  =  -8;
+    ud->u16 =  16;
+    ud->i16 = -16;
+    ud->u32 =  32;
+    ud->i32 = -32;
+    ud->ptr =  "a ptr";
     
     lua_call(L, 1, 0);
   }
@@ -210,8 +245,6 @@ int callwithwrappedTESTSTRUCT(lua_State* L)
   ud.i32 = -32;
   // ud.ptr = "a ptr, too";
 
-  printf("callwithwrappedTESTSTRUCT %p\n", &ud);
-  
   // expects a function as parameter
   if (lua_isfunction(L, 1))
   {
@@ -267,6 +300,7 @@ int callwithRefType(lua_State* L)
 static const luaL_reg testluacwrap_functions[ ] = {
   { "printTESTSTRUCT"   , printTESTSTRUCT },
   { "callwithTESTSTRUCT", callwithTESTSTRUCT },
+  { "callwithBoxedTESTSTRUCT", callwithBoxedTESTSTRUCT },
   { "callwithwrappedTESTSTRUCT", callwithwrappedTESTSTRUCT },
   { "callwithRefType", callwithRefType },
   { NULL, NULL }

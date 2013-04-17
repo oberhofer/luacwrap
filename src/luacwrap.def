@@ -5,6 +5,7 @@ EXPORTS
   luacwrap_registertype
   luacwrap_checktype
   luacwrap_pushtypedptr
+  luacwrap_pushboxedobj
   luacwrap_createreference
   luacwrap_pushreference
   luacwrap_defuintconstants

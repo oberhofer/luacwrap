@@ -49,19 +49,19 @@ assert(struct.intarray[4] == 40)
 
 print("--> test table assignment")
 struct:set{
-        u8  = 91,
-        i8  = 92,
-        u16 = 93,
-        i16 = 94,
-        u32 = 95,
-        i32 = 96,
-        ptr = "hello",
-        chararray = "hello",
-        intarray = { 19,
-                                 29,
-                                 39,
-                                 49,
-        },
+	u8  = 91,
+	i8  = 92,
+	u16 = 93,
+	i16 = 94,
+	u32 = 95,
+	i32 = 96,
+	ptr = "hello",
+	chararray = "hello",
+	intarray = { 19,
+				 29,
+ 				 39,
+ 				 49,
+	},
 }
 
 assert(struct.u8  == 91)
@@ -79,19 +79,19 @@ assert(struct.intarray[4] == 49)
 
 print("--> test new with table assignment")
 struct = TESTSTRUCT:new{
-        u8  = 91,
-        i8  = 92,
-        u16 = 93,
-        i16 = 94,
-        u32 = 95,
-        i32 = 96,
-        ptr = "hello",
-        chararray = "hello",
-        intarray = { 19,
-                                 29,
-                                 39,
-                                 49,
-        }
+	u8  = 91,
+	i8  = 92,
+	u16 = 93,
+	i16 = 94,
+	u32 = 95,
+	i32 = 96,
+	ptr = "hello",
+	chararray = "hello",
+	intarray = { 19,
+				 29,
+ 				 39,
+ 				 49,
+	}
 }
 
 assert(struct.u8  == 91)
@@ -131,7 +131,7 @@ assert(struct2.intarray[4] == 49)
 
 print("--> test new with assignment")
 for k, v in pairs(getmetatable(struct)) do
-        print(k, v)
+	print(k, v)
 end
 
 
@@ -199,6 +199,17 @@ function myfunc(struct)
   print(testluacwrap.printTESTSTRUCT(wrap))
 end
 testluacwrap.callwithTESTSTRUCT(myfunc)
+
+
+print("--> test boxed")
+function myfunc(struct)
+  print(struct)
+  print(debug.getfenv(struct))
+  printtable(debug.getfenv(struct))
+  print("struct.__ptr", struct.__ptr)
+  print(testluacwrap.printTESTSTRUCT(struct))
+end
+testluacwrap.callwithBoxedTESTSTRUCT(myfunc)
 
 
 print("--> callwithwrappedTESTSTRUCT")

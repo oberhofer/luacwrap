@@ -1150,6 +1150,58 @@ luaL_reg g_mtBoxed[ ] = {
 //////////////////////////////////////////////////////////////////////////
 /**
 
+  Pushes a boxed object on the lua stack 
+  (C-API equivalent to TYPE:new function)
+
+  @param[in]  L       lua state
+  @param[in]  desc    basic type descriptor
+  @param[in]  initval value used to initialize object memory with
+  
+  @return pointer to raw object memory
+
+*////////////////////////////////////////////////////////////////////////
+LUACWRAP_API void* luacwrap_pushboxedobj( lua_State*            L
+                                        , luacwrap_Type*        desc
+                                        , int                   initval)
+{
+  size_t udsize;
+  void* ud;
+
+  LUASTACK_SET(L);
+  
+  // determine size
+  udsize = luacwrap_type_size(desc);
+
+  // create userdata which holds type instance
+  ud = lua_newuserdata(L, udsize);
+
+  // by clear memory with given value
+  memset(ud, initval, udsize);
+  
+  // get/attach metatable
+  lua_pushlightuserdata(L, (void*)&g_mtBoxed);
+  lua_rawget(L, LUA_REGISTRYINDEX);
+  assert(!lua_isnil(L, -1));
+  lua_setmetatable(L, -2);
+
+  // set _ENV[$desc] and _ENV[$methods]
+  lua_newtable(L);
+  if (luacwrap_getmethodtable_byname(L, desc->name))
+  {
+    lua_setfield(L, -2, "$methods");
+  }
+  lua_pushlightuserdata(L, desc);
+  lua_setfield(L, -2, "$desc");
+  lua_setfenv(L, -2); 
+
+  LUASTACK_CLEAN(L, 1);
+
+  return ud;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
   Implements the new() constructor method for boxed types. It
     - creates udata with size determined from type descriptor
     - attaches the metatable for boxed objects
@@ -1162,10 +1214,10 @@ luaL_reg g_mtBoxed[ ] = {
 *////////////////////////////////////////////////////////////////////////
 static int luacwrap_type_new(lua_State* L)
 {
+  size_t         udsize;
+  void*          ud;
+  int            initval;
   luacwrap_Type* desc;
-  size_t udsize;
-  void* ud;
-  int noinitparam = lua_isnoneornil(L, 2);
 
   LUASTACK_SET(L);
 
@@ -1191,12 +1243,23 @@ static int luacwrap_type_new(lua_State* L)
   desc = lua_touserdata(L, -1);
   lua_pop(L, 1);
 
+  // if optional init parameter is a number use it to fill memory block
+  initval = 0;
+  if (lua_isnumber(L, 2))
+  {
+    // init memory with a given value
+    initval = lua_tointeger(L, 2);
+  }
+
   // determine size
   udsize = luacwrap_type_size(desc);
 
   // create userdata which holds type instance
   ud = lua_newuserdata(L, udsize);
 
+  // by clear memory with given value
+  memset(ud, initval, udsize);
+  
   // get/attach metatable
   lua_pushlightuserdata(L, (void*)&g_mtBoxed);
   lua_rawget(L, LUA_REGISTRYINDEX);
@@ -1204,33 +1267,19 @@ static int luacwrap_type_new(lua_State* L)
 
   // set _ENV[$desc] and _ENV[$methods]
   lua_newtable(L);
-  lua_pushlightuserdata(L, desc);
-  lua_setfield(L, -2, "$desc");
   lua_pushvalue(L, 1);
   lua_setfield(L, -2, "$methods");
+  lua_pushlightuserdata(L, desc);
+  lua_setfield(L, -2, "$desc");
   lua_setfenv(L, -2);
-
+  
   // if optional init parameter present then call set()
-  if (noinitparam)
+  if (!lua_isnoneornil(L, 2) && !lua_isnumber(L, 2))
   {
-    // by default clear memory
-    memset(ud, 0, udsize);
-  }
-  else
-  {
-    if (lua_isnumber(L, 2))
-    {
-      // init memory with a given value
-      memset(ud, lua_tointeger(L, 2), udsize);
-    }
-    else
-    {
-      memset(ud, 0, udsize);
-      lua_pushcfunction(L, luacwrap_type_set);
-      lua_pushvalue(L, -2);         // push userdata
-      lua_pushvalue(L,  2);         // push value
-      lua_call(L, 2, 0);            // call set()
-    }
+    lua_pushcfunction(L, luacwrap_type_set);
+    lua_pushvalue(L, -2);         // push userdata
+    lua_pushvalue(L,  2);         // push value
+    lua_call(L, 2, 0);            // call set()
   }
 
   LUASTACK_CLEAN(L, 1);
