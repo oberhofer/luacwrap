@@ -30,6 +30,7 @@ const char* g_keyLibraryTable = "luacwrap";
 // forward declarations
 static int getEmbedded(lua_State* L, int ud, int offset, const char* typname);
 static int setEmbedded(lua_State* L, int offset, const char* typname);
+static int pushEmbedded(lua_State* L, int ud, int offset, luacwrap_Type* desc);
 
 static int luacwrap_type_set(lua_State* L);
 static int luacwrap_type_dup(lua_State* L);
@@ -1575,6 +1576,53 @@ static int luacwrap_type_set(lua_State* L)
       case LUACWRAP_TC_BASIC :
         {
           luaL_error(L, "Setting basic types via set/new from table is not supported, yet");
+        }
+        break;
+      default:
+        {
+          assert(0);
+        }
+    }
+  }
+  else if (lua_isstring(L, 2))
+  {
+    switch(desc->typeclass)
+    {
+      case LUACWRAP_TC_RECORD:
+        {
+          luaL_error(L, "Assigning string to record is not supported");
+        }
+        break;
+      case LUACWRAP_TC_ARRAY :
+        {
+          // assign string to array
+          const char* src;
+          size_t srclen, arrsize;
+          
+          int   destoffset;
+          PBYTE destbase;
+
+          luacwrap_ArrayType* arrdesc = (luacwrap_ArrayType*)desc;
+          
+          luacwrap_getouter(L, 1, &destoffset);
+          destbase  = lua_touserdata(L, -1);
+
+          src = lua_tolstring(L, 2, &srclen);
+
+          arrsize = arrdesc->elemsize * arrdesc->elemcount;
+
+          // copy binary content
+          memcpy( destbase + destoffset
+                , src
+                , min(srclen, arrsize));
+        }
+        break;
+      case LUACWRAP_TC_BUFFER:
+      case LUACWRAP_TC_BASIC :
+        {
+          // you should not get here
+          assert(0);
+          luaL_error(L, "Assigning string to buffer/basic type is not supported");
         }
         break;
       default:
