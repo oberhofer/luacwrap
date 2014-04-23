@@ -537,9 +537,21 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
 
           lua_pushvalue(L, -3);                                           // function to be called (tostring)
           getEmbedded(L, ud, offset + member->offset, member->typname);   // value to convert
-          lua_call(L, 1, 1);
-          lua_rawseti(L, -2, idx++);
-
+          if (lua_isnumber(L, -1))
+          {
+            lua_call(L, 1, 1);                                            // call tostring
+            lua_rawseti(L, -2, idx++);
+          }
+          else
+          {
+            lua_call(L, 1, 1);                                            // call tostring
+            lua_pushstring(L, "[[");
+            lua_rawseti(L, -3, idx++);
+            lua_rawseti(L, -2, idx++);
+            lua_pushstring(L, "]]");
+            lua_rawseti(L, -2, idx++);
+          }
+          
           lua_pushstring(L, ",\n");
           lua_rawseti(L, -2, idx++);
 
@@ -549,7 +561,7 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
         lua_pushstring(L, "}");
         lua_rawseti(L, -2, idx++);
 
-        lua_call(L, 1, 1);
+        lua_call(L, 1, 1);                                                // call concat
 
         // remove "tostring"
         lua_remove(L, -2);
@@ -573,14 +585,28 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
       break;
     case LUACWRAP_TC_ARRAY :
       {
-        // call tabletostring
-        lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-        lua_rawget(L, LUA_REGISTRYINDEX);
-        lua_getfield(L, -1, "tabletostring");
-        lua_remove(L, -2);
-
-        getEmbedded(L, ud, offset, desc->name);   // value to convert
-        lua_call(L, 1, 1);
+        luacwrap_ArrayType* arrdesc = (luacwrap_ArrayType*)desc;
+        
+        if ('$' == arrdesc->elemtype[0])
+        {
+          // if element type is an internal type convert directly to string
+          const char* pobj;
+          
+          pobj = (const char*)lua_touserdata(L, ud) + offset;
+        
+          lua_pushlstring(L, pobj , arrdesc->elemsize * arrdesc->elemcount);
+        }
+        else
+        {
+          // call tabletostring
+          lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
+          lua_rawget(L, LUA_REGISTRYINDEX);
+          lua_getfield(L, -1, "tabletostring");
+          lua_remove(L, -2);
+          
+          getEmbedded(L, ud, offset, desc->name);   // value to convert
+          lua_call(L, 1, 1);
+        }
 
         LUASTACK_CLEAN(L, 1);
         return 1;
@@ -591,7 +617,7 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
         const char* pobj;
         luacwrap_BufferType* bufdesc = (luacwrap_BufferType*)desc;
 
-        pobj = (const char*)lua_touserdata(L, ud);
+        pobj = (const char*)lua_touserdata(L, ud) + offset;
 
         // get buffer as string
         lua_pushlstring(L, pobj, bufdesc->size);
@@ -2445,7 +2471,7 @@ static int luacwrap_createbuffer(lua_State*       L)
 char* create_moduletable =
 "  local _M = { types = {} }\n"
 "  function _M.tabletostring(self)\n"
-"    local res = { \"[\" .. #self .. \"]\" .. \" = {\" }\n"
+"    local res = { \" = {\" }\n"
 "    for k = 1, #self do\n"
 "      res[#res+1] = \"  \" .. k .. \" = \" .. tostring(self[k]) .. \",\"\n"
 "    end\n"
