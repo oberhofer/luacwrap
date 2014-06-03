@@ -19,70 +19,27 @@ LuaCwrap
  * supports customizeable method table for struct and union types
  * supports C and Lua API
 
-# Installation
+# Prerequisites
 
-First download the source code via git 
-
-    git clone git://github.com/oberhofer/luacwrap.git master
-
-or unpack the package you got via the download option
+Depends on Lua, the Lua development packages. LuaRocks is used for build/install.
 
 ## Linux
 
-### Prerequisites
-
-Install Lua and the development files we depend on
+Install the following packages
 
     sudo apt-get install liblua5.1-0 liblua5.1-0-dev
 
-### Build from source
-
-* Start a console and change to the directory where the luacwrap source is located
-* Start make
-
-    `make`
-
-* This creates two shared libraries (luacwrap.1.0.0.so and testluacwrap.1.0.0.so) within ./src
-  The necessary links needed to execute the unittest.lua within ./src are also created.
-* You can execute the unittests via
-
-    `make test`
-
-### Installation
-
-Edit the makefile to set the correct destination directory for the library files
-and execute
-
-    sudo make install
-
-This creates the necessary libs/links within /usr/local/lib and /usr/local/lib/lua/5.1 to
-enable LuaCwrap to be used as a shared library and a lua module.
-
-
 ## Windows
 
-### Prerequisites
+For a beginner I would recommend to install the latest "Lua for Windows" 
+setup from from http://luaforwindows.googlecode.com/ and install 
+LuaCWrap via LuaRocks.
 
-Install Lua for Windows from http://luaforwindows.googlecode.com/
+# Installation via Luarocks
 
-### Build from source
+Install on console via 
 
-* Edit ./etc/msvc.bat and set the correct path to the Lua for Windows header and library files.
-* Open a Visual Studio .NET Command Prompt
-* Change path to the LuaCwrap root directory
-* Execute
-
-    etc\msvc.bat
-
-As a result you should have now the files luacwrap.dll and testluacwrap.dll within your source directory.
-To execute the unittest, do
-
-    cd src
-    lua unittest.lua
-
-### Installation
-
-To install LuaCwrap into Lua for Windows copy the file luacwrap.dll to the Lua for Windows clibs directory.
+    luarocks install luacwrap
 
 # Usage
 

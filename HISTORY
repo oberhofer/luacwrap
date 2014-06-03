@@ -5,3 +5,15 @@
   to (non garbage collected) objects on the lua stack
 * added helper functions to add unsigned constants to a lua table
   (for wrapping enums)
+
+1.0.0
+
+* added support for initialization via set() and new()
+* added function luacwrap_pushboxedobj() to add boxed structure wrappers
+* added set() of arrays via string
+* added LuaRocks support
+* improved reference types to be able to control their lifetime
+* fixed copying of pointer references (environment table)
+* fixed initialization of instances created via new(from)
+* fixed creation of destination directory for lua module link (linux makefile)
+* fixed tostring conversion of array/buffer
