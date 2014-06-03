@@ -1,9 +1,9 @@
 package = "LuaCwrap"
-version = "0.1.0-0"
+version = "1.0.0-1"
 
 source = {
    url = "git://github.com/oberhofer/luacwrap.git",
-   tag = "0.1.0-0"
+   tag = "v1.0.0"
 }
 
 description = {
@@ -28,6 +28,7 @@ build = {
   install_variables = {
     LUA_LIBDIR = "$(LIBDIR)",
     LUA_DIR = "$(LUADIR)",
+    LUA_INCDIR = "$(LUA_INCDIR)",
     BIN_DIR = "$(BINDIR)",
     PREFIX = "$(PREFIX)"
   },
