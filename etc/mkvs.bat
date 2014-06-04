@@ -2,9 +2,25 @@
 @rem Do not run from this directory; run it from the toplevel: etc\mkvs.bat.
 @rem It creates luacwrap.dll, luacwrap.lib and testluacwrap.dll in src.
 
-@setlocal
+@setlocal enableextensions enabledelayedexpansion
+@ echo off
 
-@set LUAROOT=c:/Programme/Lua/5.1
+@rem Determine Lua installation directory from a list of possible locations
+@rem and try the first which exists
+set DIRS=%LUA_DEV%;c:\Lua\5.1;%ProgramFiles%\Lua\5.1;
+set DIRS=%DIRS:;=" "%
+
+for %%k IN ("%DIRS%") do (
+  set LUAROOT=%%~k
+  if EXIST !LUAROOT! goto start
+)
+echo "Lua installation path not found"
+goto end
+
+:start
+@echo on
+@echo Lua installation path: %LUAROOT%
+@echo off
 @set LUAINCLUDE=%LUAROOT%/include
 @set LUALIB=%LUAROOT%/lib
 
@@ -28,3 +44,6 @@ if exist testluacwrap.dll.manifest^
 @rem cleanup
 del *.obj *.manifest
 cd ..
+
+:end
+@echo on
