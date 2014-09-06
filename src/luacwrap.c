@@ -79,11 +79,8 @@ int luacwrap_type_get_reference(lua_State *L, int ud, int offset)
   lua_getfenv(L, ud);
   if (!lua_isnil(L, -1))
   {
-    PBYTE pUdata;
-
     // result = env[offset]
     lua_rawgeti(L, -1, offset);
-    pUdata = (PBYTE)lua_touserdata(L, ud);
 
     // check if reference is present
     if (!lua_isnil(L, -1))
@@ -1610,11 +1607,15 @@ static int luacwrap_type_set(lua_State* L)
           src = lua_tolstring(L, 2, &srclen);
 
           arrsize = arrdesc->elemsize * arrdesc->elemcount;
+          
+          // limit size to copy
+          if (arrsize < srclen)
+            arrsize = srclen;
 
           // copy binary content
           memcpy( destbase + destoffset
                 , src
-                , min(srclen, arrsize));
+                , arrsize);
         }
         break;
       case LUACWRAP_TC_BUFFER:
@@ -2565,82 +2566,88 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
   LUASTACK_SET(L);
 
   // create module table
-  luaL_dostring(L, create_moduletable);
+  if (luaL_dostring(L, create_moduletable))
+  {
+    lua_error(L);
+    return 0;
+  }
+  else
+  {
+    // add createstruct() and createarray() to module table
+    lua_pushcfunction(L, luacwrap_registerbuffer);
+    lua_setfield(L, -2, "registerbuffer");
+    lua_pushcfunction(L, luacwrap_registerstruct);
+    lua_setfield(L, -2, "registerstruct");
+    lua_pushcfunction(L, luacwrap_registerarray);
+    lua_setfield(L, -2, "registerarray");
+    lua_pushcfunction(L, luacwrap_createbuffer);
+    lua_setfield(L, -2, "createbuffer");
+    lua_pushcfunction(L, luacwrap_release_reference);
+    lua_setfield(L, -2, "releasereference");
 
-  // add createstruct() and createarray() to module table
-  lua_pushcfunction(L, luacwrap_registerbuffer);
-  lua_setfield(L, -2, "registerbuffer");
-  lua_pushcfunction(L, luacwrap_registerstruct);
-  lua_setfield(L, -2, "registerstruct");
-  lua_pushcfunction(L, luacwrap_registerarray);
-  lua_setfield(L, -2, "registerarray");
-  lua_pushcfunction(L, luacwrap_createbuffer);
-  lua_setfield(L, -2, "createbuffer");
-  lua_pushcfunction(L, luacwrap_release_reference);
-  lua_setfield(L, -2, "releasereference");
+    // add reftable and string table to module table
+    lua_newtable(L);
+    lua_setfield(L, -2, "reftable");
+    lua_newtable(L);
+    lua_setfield(L, -2, "stringtable");
 
-  // add reftable and string table to module table
-  lua_newtable(L);
-  lua_setfield(L, -2, "reftable");
-  lua_newtable(L);
-  lua_setfield(L, -2, "stringtable");
+    // store module table in registry
+    lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
+    lua_pushvalue(L, -2);
+    lua_rawset(L, LUA_REGISTRYINDEX);
 
-  // store module table in registry
-  lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-  lua_pushvalue(L, -2);
-  lua_rawset(L, LUA_REGISTRYINDEX);
+    // create metatable for reference objects and store it in registry
+    lua_pushlightuserdata(L, g_mtReferences);
+    lua_newtable(L);
+    luaL_register( L, NULL, g_mtReferences);
+    lua_rawset(L, LUA_REGISTRYINDEX);
 
-  // create metatable for reference objects and store it in registry
-  lua_pushlightuserdata(L, g_mtReferences);
-  lua_newtable(L);
-  luaL_register( L, NULL, g_mtReferences);
-  lua_rawset(L, LUA_REGISTRYINDEX);
+    // create metatable for boxed objects and store it in registry
+    lua_pushlightuserdata(L, g_mtBoxed);
+    lua_newtable(L);
+    luaL_register( L, NULL, g_mtBoxed);
 
-  // create metatable for boxed objects and store it in registry
-  lua_pushlightuserdata(L, g_mtBoxed);
-  lua_newtable(L);
-  luaL_register( L, NULL, g_mtBoxed);
+    // register getouter in metatable
+    lua_pushlightuserdata(L, Boxed_getouter);
+    lua_setfield(L, -2, "getouter");
+    lua_rawset(L, LUA_REGISTRYINDEX);
 
-  // register getouter in metatable
-  lua_pushlightuserdata(L, Boxed_getouter);
-  lua_setfield(L, -2, "getouter");
-  lua_rawset(L, LUA_REGISTRYINDEX);
+    // create metatable for embedded objects and store it in registry
+    lua_pushlightuserdata(L, g_mtEmbedded);
+    lua_newtable(L);
+    luaL_register( L, NULL, g_mtEmbedded);
 
-  // create metatable for embedded objects and store it in registry
-  lua_pushlightuserdata(L, g_mtEmbedded);
-  lua_newtable(L);
-  luaL_register( L, NULL, g_mtEmbedded);
+    // register getouter in metatable
+    lua_pushlightuserdata(L, Embedded_getouter);
+    lua_setfield(L, -2, "getouter");
+    lua_rawset(L, LUA_REGISTRYINDEX);
 
-  // register getouter in metatable
-  lua_pushlightuserdata(L, Embedded_getouter);
-  lua_setfield(L, -2, "getouter");
-  lua_rawset(L, LUA_REGISTRYINDEX);
+    // create metatable for type wrappers and store it in registry
+    lua_pushlightuserdata(L, g_mtTypeCtors);
+    lua_newtable(L);
+    luaL_register( L, NULL, g_mtTypeCtors);
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -1, "__index");
+    lua_rawset(L, LUA_REGISTRYINDEX);
 
-  // create metatable for type wrappers and store it in registry
-  lua_pushlightuserdata(L, g_mtTypeCtors);
-  lua_newtable(L);
-  luaL_register( L, NULL, g_mtTypeCtors);
-  lua_pushvalue(L, -1);
-  lua_setfield(L, -1, "__index");
-  lua_rawset(L, LUA_REGISTRYINDEX);
+    // create metatable for dynamically created type wrappers
+    // and store it in registry
+    lua_pushlightuserdata(L, g_mtDynTypeCtors);
+    lua_newtable(L);
+    luaL_register( L, NULL, g_mtDynTypeCtors);
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -1, "__index");
+    lua_rawset(L, LUA_REGISTRYINDEX);
 
-  // create metatable for dynamically created type wrappers
-  // and store it in registry
-  lua_pushlightuserdata(L, g_mtDynTypeCtors);
-  lua_newtable(L);
-  luaL_register( L, NULL, g_mtDynTypeCtors);
-  lua_pushvalue(L, -1);
-  lua_setfield(L, -1, "__index");
-  lua_rawset(L, LUA_REGISTRYINDEX);
+    // now register numeric basicTypes
+    luacwrap_registerNumericTypes(L);
 
-  // now register numeric basicTypes
-  luacwrap_registerNumericTypes(L);
+    // register pointer type
+    luacwrap_registerbasictype(L, &regType_Pointer);
 
-  // register pointer type
-  luacwrap_registerbasictype(L, &regType_Pointer);
-
-  // register reference type
-  luacwrap_registerbasictype(L, &regType_Reference);
+    // register reference type
+    luacwrap_registerbasictype(L, &regType_Reference);
+  }
 
   LUASTACK_CLEAN(L, 1);
   return 1;
