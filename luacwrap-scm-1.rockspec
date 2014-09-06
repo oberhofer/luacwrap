@@ -1,9 +1,10 @@
-package = "LuaCwrap"
-version = "1.0.0-1"
+package = "luacwrap"
+
+version = "scm-1"
 
 source = {
-   url = "git://github.com/oberhofer/luacwrap.git",
-   tag = "v1.0.0"
+  url    = "git://github.com/oberhofer/luacwrap.git",
+  branch = "master",
 }
 
 description = {
@@ -36,7 +37,7 @@ build = {
     linux = {
       build_variables = {
         LIB_OPTION = "-shared",
-        CFLAGS = '$(CFLAGS) -I$(LUA_INCDIR) -DLINUX -fno-stack-protector',
+        CFLAGS = '$(CFLAGS) -I$(LUA_INCDIR) -DLINUX',
         LIB_EXT = '.so'
       },
     },
