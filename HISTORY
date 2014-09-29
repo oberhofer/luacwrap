@@ -22,3 +22,7 @@
 
 * published via moonrocks server
 
+1.0.2-1
+
+* made folder structure compatible with luarocks under win32
+
