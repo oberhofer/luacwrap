@@ -1,28 +1,27 @@
+LUA_INCDIR=c:\Lua\5.1\Include
+LIB_OPTION=c:\Lua\5.1\lib\lua51.lib
 
 {src}.c{src}.obj:
 	cl /c /MD /Fo$@ $(CFLAGS) -I$(LUA_INCDIR) -I.\src $<
 
-all: src\luacwrap.dll src\testluacwrap.dll 
-	IF EXIST src\luacwrap.dll.manifest del src\luacwrap.dll.manifest
-	IF EXIST src\testluacwrap.dll.manifest del src\testluacwrap.dll.manifest
+all: bin\luacwrap.dll bin\testluacwrap.dll lib\luacwrap.lib
+	IF EXIST bin\luacwrap.dll.manifest del bin\luacwrap.dll.manifest
+	IF EXIST bin\testluacwrap.dll.manifest del bin\testluacwrap.dll.manifest
   echo $(BIN_DIR)
 
-src\luacwrap.dll: src\luaaux.obj src\luacwrap.obj src\wrapnumeric.obj src\defconstants.obj 
-	link /dll /out:src\luacwrap.dll /def:src\luacwrap.def src\luaaux.obj src\luacwrap.obj src\wrapnumeric.obj src\defconstants.obj $(LIB_OPTION)
-	IF EXIST src\luacwrap.dll.manifest mt -manifest src\luacwrap.dll.manifest -outputresource:src\luacwrap.dll;2
+bin\luacwrap.dll: src\luaaux.obj src\luacwrap.obj src\wrapnumeric.obj src\defconstants.obj 
+	link /dll /out:bin\luacwrap.dll /def:src\luacwrap.def src\luaaux.obj src\luacwrap.obj src\wrapnumeric.obj src\defconstants.obj $(LIB_OPTION)
+	IF EXIST bin\luacwrap.dll.manifest mt -manifest bin\luacwrap.dll.manifest -outputresource:bin\luacwrap.dll;2
 
-src\testluacwrap.dll: src\testluacwrap.obj src\luaaux.obj
-	link /dll /out:src\testluacwrap.dll /def:src\testluacwrap.def src\luacwrap.lib src\testluacwrap.obj src\luaaux.obj $(LIB_OPTION)
-	IF EXIST src\testluacwrap.dll.manifest mt -manifest src\testluacwrap.dll.manifest -outputresource:src\testluacwrap.dll;2
+bin\testluacwrap.dll: src\testluacwrap.obj src\luaaux.obj
+	link /dll /out:bin\testluacwrap.dll /def:src\testluacwrap.def src\luacwrap.lib src\testluacwrap.obj src\luaaux.obj $(LIB_OPTION)
+	IF EXIST bin\testluacwrap.dll.manifest mt -manifest bin\testluacwrap.dll.manifest -outputresource:bin\testluacwrap.dll;2
 
 install:
-	copy src\luacwrap.dll "$(BIN_DIR)"
-	copy src\luacwrap.lib "$(LUA_LIBDIR)"
-	copy src\luacwrap.h   "$(LUA_INCDIR)"
-#	copy src\testluacwrap.dll "$(BIN_DIR)"
+	copy bin\luacwrap.dll "$(BIN_DIR)"
 
 clean:
-	del src\*.dll src\*.obj src\*.exp src\*.lib src\*.dll.manifest
+	del bin\*.dll src\*.obj src\*.exp src\*.lib src\*.dll.manifest
 
 test:
 	cd src && lua unittest.lua
