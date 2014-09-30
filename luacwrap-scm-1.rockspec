@@ -25,35 +25,28 @@ dependencies = {
 }
 
 build = {
-    platforms = {
-        linux = {
-          type = "make",
-          build_variables = {
-            LIB_OPTION = "-shared",
-            CFLAGS = '$(CFLAGS) -I$(LUA_INCDIR) -DLINUX',
-            LIB_EXT = '.so'
-          },
-        },
-        win32 = {
-            type = "builtin",
-            modules = {
-                luacwrap = {
-                    sources = {
-                        "src/defconstants.c",
-                        "src/luaaux.c",
-                        "src/luacwrap.c",
-                        "src/wrapnumeric.c"
-                    },
-                    defines = { "WIN32", "NDEBUG", "_WINDOWS", "_USRDLL",
-                                "LUACWRAP_API=__declspec(dllexport)" },
-                    libraries = { "user32" },
-                }
-            },
-            install= {
-                lib = {
-                    "luacwrap.dll"
-                }
-            }
-        }
+  type = "make",
+  copy_directories = { "doc" },
+  install_variables = {
+    INST_PREFIX="$(PREFIX)",
+    INST_BINDIR="$(BINDIR)",
+    INST_LIBDIR="$(LIBDIR)",
+    INST_LUADIR="$(LUADIR)",
+    INST_CONFDIR="$(CONFDIR)",
+  },
+  platforms = {
+    linux = {
+      build_variables = {
+        LIB_OPTION = "-shared",
+        CFLAGS = '$(CFLAGS) -I$(LUA_INCDIR) -DLINUX',
+        LIB_EXT = '.so'
+      },
+    },
+    win32 = {
+      build_variables = {
+        LIB_OPTION = "$(LUA_LIBDIR)\\lua5.1.lib",
+        CFLAGS = "$(CFLAGS) /I$(LUA_INCDIR) /DWINDOWS",
+      }
     }
-} 
+  }
+}

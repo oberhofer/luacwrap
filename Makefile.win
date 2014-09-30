@@ -20,7 +20,7 @@ bin\testluacwrap.dll: src\testluacwrap.obj src\luaaux.obj lib\luacwrap.lib
 	IF EXIST bin\testluacwrap.dll.manifest mt -manifest bin\testluacwrap.dll.manifest -outputresource:bin\testluacwrap.dll;2
 
 install:
-	copy bin\luacwrap.dll "$(BIN_DIR)"
+	copy bin\luacwrap.dll "$(INST_LIBDIR)"
 
 clean:
 	del bin\*.dll src\*.obj src\*.exp src\*.lib src\*.dll.manifest
