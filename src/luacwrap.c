@@ -902,7 +902,7 @@ static int Embedded_gc(lua_State* L)
 static int Embedded_getouter(lua_State* L, int ud, int* offset)
 {
   luacwrap_EmbeddedObject* pobj;
-  pobj = (luacwrap_EmbeddedObject*)lua_touserdata(L, 1);
+  pobj = (luacwrap_EmbeddedObject*)lua_touserdata(L, ud);
 
   // get pointer to outer object
   lua_rawgeti(L, LUA_REGISTRYINDEX, pobj->outer);
