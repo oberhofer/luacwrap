@@ -24,7 +24,7 @@ goto end
 @set LUAINCLUDE=%LUAROOT%/include
 @set LUALIB=%LUAROOT%/lib
 
-@set MYCOMPILE=cl /nologo /MD /O2 /W3 /c /D_CRT_SECURE_NO_DEPRECATE /I%LUAINCLUDE%
+@set MYCOMPILE=cl /nologo /MD /O2 /W3 /c /D_CRT_SECURE_NO_DEPRECATE /I%LUAINCLUDE% /I../include
 @set MYLINK=link /nologo /LIBPATH:%LUALIB%
 @set MYMT=mt /nologo
 
