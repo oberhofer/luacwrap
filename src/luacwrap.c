@@ -34,6 +34,7 @@ static int pushEmbedded(lua_State* L, int ud, int offset, luacwrap_Type* desc);
 
 static int luacwrap_type_set(lua_State* L);
 static int luacwrap_type_dup(lua_State* L);
+static int luacwrap_getouter(lua_State* L, int ud, int* offset);
 
 static int* luacwrap_toreference(lua_State* L, int index);
 
@@ -41,6 +42,22 @@ static int* luacwrap_toreference(lua_State* L, int index);
 // and the offset within the outer object
 typedef int (*GET_OBJECTOUTER)(lua_State* L, int ud, int* offset);
 
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  get module table from registry
+
+*////////////////////////////////////////////////////////////////////////
+static void getmoduletable(lua_State *L)
+{
+  lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
+  lua_rawget(L, LUA_REGISTRYINDEX);
+  if (!lua_istable(L, -1))
+  {
+    luaL_error(L, "module table not defined !");
+  }
+}
 
 //////////////////////////////////////////////////////////////////////////
 /**
@@ -597,8 +614,7 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
         else
         {
           // call tabletostring
-          lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-          lua_rawget(L, LUA_REGISTRYINDEX);
+          getmoduletable(L);
           lua_getfield(L, -1, "tabletostring");
           lua_remove(L, -2);
           
@@ -671,8 +687,7 @@ static int luacwrap_getmethodtable_byname(lua_State* L, const char* name)
   LUASTACK_SET(L);
 
   // get access to _M[elemtype]
-  lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-  lua_gettable(L, LUA_REGISTRYINDEX);
+  getmoduletable(L);
   lua_getfield(L, -1, "types");
   lua_getfield(L, -1, name);
   if (lua_isnil(L, -1))
@@ -709,8 +724,7 @@ static luacwrap_Type* luacwrap_getdescriptor_byname(lua_State* L, const char* na
   LUASTACK_SET(L);
 
   // get access to _M[elemtype]
-  lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-  lua_gettable(L, LUA_REGISTRYINDEX);
+  getmoduletable(L);
   lua_getfield(L, -1, "types");
   lua_getfield(L, -1, name);
   if (lua_isnil(L, -1))
@@ -1732,12 +1746,7 @@ LUACWRAP_API int luacwrap_registerbasictype(lua_State* L, luacwrap_BasicType* de
   LUASTACK_SET(L);
 
   // get module table from registry
-  lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-  lua_rawget(L, LUA_REGISTRYINDEX);
-  if (!lua_istable(L, -1))
-  {
-    luaL_error(L, "module table not defined !");
-  }
+  getmoduletable(L);
 
   lua_getfield(L, -1, "setfield");
   if (!lua_isfunction(L, -1))
@@ -1800,8 +1809,7 @@ LUACWRAP_API int luacwrap_createreference(lua_State* L, int index)
   LUASTACK_SET(L);
 
   // get access to _M.reftable
-  lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-  lua_gettable(L, LUA_REGISTRYINDEX);
+  getmoduletable(L);
   lua_getfield(L, -1, "reftable");
   assert(lua_istable(L, -1));
 
@@ -1832,8 +1840,7 @@ LUACWRAP_API int luacwrap_release_reference(lua_State *L)
   if (pref && (*pref))
   {
     // get access to _M.reftable
-    lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-    lua_gettable(L, LUA_REGISTRYINDEX);
+    getmoduletable(L);
     lua_getfield(L, -1, "reftable");
     assert(lua_istable(L, -1));
 
@@ -1869,8 +1876,7 @@ int luacwrap_reference_index(lua_State *L)
     if (0 == strcmp(stridx, "value"))
     {
       // get access to _M.reftable
-      lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-      lua_gettable(L, LUA_REGISTRYINDEX);
+      getmoduletable(L);
       lua_getfield(L, -1, "reftable");
       assert(lua_istable(L, -1));
 
@@ -2126,12 +2132,7 @@ LUACWRAP_API int luacwrap_registertype( lua_State*       L
   LUASTACK_SET(L);
 
   // get module table from registry
-  lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-  lua_rawget(L, LUA_REGISTRYINDEX);
-  if (!lua_istable(L, -1))
-  {
-    luaL_error(L, "module table not defined !");
-  }
+  getmoduletable(L);
 
   // push key/value
   lua_pushstring(L, desc->name);
@@ -2238,8 +2239,7 @@ static const char* luacwrap_storestring(lua_State* L, int idx, const char* errms
   else
   {
     // get access to _M.stringtable
-    lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-    lua_gettable(L, LUA_REGISTRYINDEX);
+    getmoduletable(L);
     lua_getfield(L, -1, "stringtable");
     assert(lua_istable(L, -1));
 
@@ -2492,8 +2492,7 @@ static int luacwrap_createbuffer(lua_State*       L)
   bufsize = lua_tointeger(L, 1);
 
   // get/create buffer type indexed by size under _M.buftypes
-  lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
-  lua_rawget(L, LUA_REGISTRYINDEX);
+  getmoduletable(L);
   lua_getfield(L, -1, "buftypes");
   lua_remove(L, -2);
 
