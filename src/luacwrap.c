@@ -930,14 +930,42 @@ luaL_reg g_mtEmbedded[ ] = {
 static int pushEmbedded(lua_State* L, int ud, int offset, luacwrap_Type* desc)
 {
   luacwrap_EmbeddedObject* pobj;
+  int fromoffset = 0;
 
   LUASTACK_SET(L);
+  
+  // special handling for offset = 0 (cast operation)
+  if (0 == offset)
+  {
+    // same types -> push a copy of ud
+    luacwrap_Type* fromdesc = luacwrap_getdescriptor(L, ud);
+    if (fromdesc == desc)
+    {
+      lua_pushvalue(L, ud);
+      LUASTACK_CLEAN(L, 1);
+      return 1;
+    }
+  }
 
   pobj = (luacwrap_EmbeddedObject*)lua_newuserdata(L, sizeof(luacwrap_EmbeddedObject));
-
-  lua_pushvalue(L, ud);
+  
+  // get the outer object
+  if (luacwrap_getouter(L, ud, &fromoffset))
+  {
+    // outer object is now on lua stack
+    // additional offset is in fromoffset
+  }
+  else
+  {
+    // this is a non wrapped object (pointer = light user data, or blob = userdata)
+    // so wrap it
+    fromoffset = 0;
+    lua_pushvalue(L, ud);
+  }
+ 
+  // create new wrapper on outer object
   pobj->outer  = luaL_ref(L, LUA_REGISTRYINDEX);
-  pobj->offset = offset;
+  pobj->offset = fromoffset + offset;
 
   // get/attach metatable
   lua_pushlightuserdata(L, (void*)&g_mtEmbedded);
@@ -1467,9 +1495,14 @@ static int luacwrap_type_attach(lua_State* L)
   switch(lua_type(L, 2))
   {
     case LUA_TLIGHTUSERDATA:
-    case LUA_TUSERDATA:
       {
         result = getEmbedded(L, 2, 0, desc->name);
+      }
+      break;
+    case LUA_TUSERDATA:
+      {
+        // check for __ptr field
+        result = pushEmbedded(L, 2, 0, desc);
       }
       break;
     case LUA_TNUMBER:

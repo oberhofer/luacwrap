@@ -1,7 +1,32 @@
 testluacwrap = require("testluacwrap")
 
+-- helper functions
+function printtable(t)
+  for k,v in pairs(t) do
+    print("  ", k, v)
+  end
+end
+
 print("--> create TESTSTRUCT")
 local struct = TESTSTRUCT:new()
+
+print("--> semantic of attach()")
+local attached = TESTSTRUCT:attach(struct)
+assert(struct.__ptr == attached.__ptr)
+
+print("--> checkInnerStructAccess")
+print(getmetatable(struct))
+for k, v in pairs(getmetatable(struct)) do
+	print(k, v)
+end
+print("----")
+print(getmetatable(struct.inner))
+for k, v in pairs(getmetatable(struct.inner)) do
+	print(k, v)
+end
+print("----")
+
+assert(1 == testluacwrap.checkInnerStructAccess(struct, struct.inner))
 
 print("--> check $ref init values")
 
@@ -171,11 +196,6 @@ print("struct.inner.pszText", struct.inner.pszText)
 print("--> internal print")
 print(testluacwrap.printTESTSTRUCT(struct))
 
-function printtable(t)
-  for k,v in pairs(t) do
-    print("  ", k, v)
-  end
-end
 
 print("--> check $ref types")
 struct.ref = "my ref"
@@ -200,6 +220,18 @@ function myfunc(struct)
 end
 testluacwrap.callwithTESTSTRUCT(myfunc)
 
+print("--> semantic of attach() with light embedded structs")
+function myfunc(struct)
+  local wrap = TESTSTRUCT:attach(struct)
+  -- print(wrap)
+  
+  local attached = INNERSTRUCT:attach(wrap)
+  -- print(attached)
+
+  -- check if they point to the same memory
+  assert(wrap.__ptr == attached.__ptr)  
+end
+testluacwrap.callwithTESTSTRUCT(myfunc)
 
 print("--> test boxed")
 function myfunc(struct)
@@ -240,5 +272,6 @@ function wrapfunc(wrap)
   print(testluacwrap.printTESTSTRUCT(wrap))
 end
 testluacwrap.callwithRefType(wrapfunc, "callwithRefType")
+
 
 print("--> all checks passed")

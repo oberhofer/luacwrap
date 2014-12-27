@@ -297,12 +297,51 @@ int callwithRefType(lua_State* L)
   return 0;
 }
 
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  function if given INNERSTRUCT is part of the given TESTSTRUCT
+
+  @param[in]  L  pointer lua state
+  
+  @result true or false
+
+*/////////////////////////////////////////////////////////////////////////
+int checkInnerStructAccess(lua_State* L)
+{
+  TESTSTRUCT*  outer;
+  INNERSTRUCT* inner;
+  
+  int result = 0;
+
+  LUASTACK_SET(L);
+
+  outer = (TESTSTRUCT*)luacwrap_checktype(L, 1, &regType_TESTSTRUCT.hdr);
+  inner = (INNERSTRUCT*)luacwrap_checktype(L, 2, &regType_INNERSTRUCT.hdr);
+    
+  printf("outer %p\n", outer);
+  printf("inner %p\n", inner);
+    
+  // check if inner points inside outer
+  if ((&outer->inner) == inner)
+  {
+    result = 1;
+  }
+
+  lua_pushnumber(L, result);
+  
+  LUASTACK_CLEAN(L, 1);
+  return 1;
+}
+
+
 static const luaL_reg testluacwrap_functions[ ] = {
   { "printTESTSTRUCT"   , printTESTSTRUCT },
   { "callwithTESTSTRUCT", callwithTESTSTRUCT },
   { "callwithBoxedTESTSTRUCT", callwithBoxedTESTSTRUCT },
   { "callwithwrappedTESTSTRUCT", callwithwrappedTESTSTRUCT },
   { "callwithRefType", callwithRefType },
+  { "checkInnerStructAccess", checkInnerStructAccess },
   { NULL, NULL }
 };
 

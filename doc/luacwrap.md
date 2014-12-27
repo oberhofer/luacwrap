@@ -134,7 +134,7 @@ reference manually (via `refobject:release()`).
 </pre>
 
 Embedded objects can also be used to push C pointers during calls from C to Lua. But in this case you 
-hav to be aware that in most cases the C pointer isn't valid after the Lua function scope ends. 
+have to be aware that in most cases the C pointer isn't valid after the Lua function scope ends. 
 If you want to store the referenced value you have to duplicate the underlying instance via 
 <object>:__dup(), which creates a new boxed object.
 
@@ -376,7 +376,7 @@ From Lua you use the instance as follows:
       print(teststruct.u8)
     end
 
-### Attach to userdata
+### Attach to light userdata
 
 With the `typedesc:attach()` function you can attach a light embedded object to an 
 Lua userdata object which is interpreted as a pointer address. The above C sample could be modified 
@@ -411,6 +411,27 @@ according to the Lua book. Common errors will be detected by LuaCwrap, but as th
 method acts like a C cast many things could go wrong. So if you use <code>attach</code> be sure 
 you know what you are doing.
 </div>
+
+### Attach to embedded objects
+
+Sometimes the final structure to attach to a given light userdata is not known in advance.
+It is common practice in several APIs to hava a common header with a type or class field.
+This field denotes the final structure to use.
+Attaching could be done via the original light userdata which is also available as <object>.__ptr 
+in embedded objects it is recomended to attach to the embedded object instance directly, 
+because this also takes care of the lifetime of the embedded object instance.
+Example:
+
+    function myfunction(pointer)
+      local teststruct = TESTSTRUCT:attach(pointer)
+      -- attach another struct definition depending on 
+      -- struct field
+      if (2 == teststruct.class) then
+        -- do not use pointer or teststruct.__ptr to attach to
+        local extstruct = TESTSTRUCTEX:attach(teststruct)
+        ...
+      end
+    end
 
 ###
 
