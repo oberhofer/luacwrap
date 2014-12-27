@@ -45,7 +45,7 @@ test: $(TESTLUACWRAP_LIBNAME).$(EXT)
 # List of dependencies
 #
 luaaux.o: luaaux.c luaaux.h
-luacwrap.o: luacwrap.c luacwrap.h luaaux.h wrapnumeric.h
+luacwrap.o: luacwrap.c $(LUACWRAP_INCDIR)/luacwrap.h luaaux.h wrapnumeric.h
 wrapnumeric.o: wrapnumeric.c wrapnumeric.h luaaux.h
 testluacwrap.o: testluacwrap.c luaaux.h
 

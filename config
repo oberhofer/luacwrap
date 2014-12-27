@@ -21,7 +21,8 @@ TESTLUACWRAP_MNAME=$(TESTLUACWRAP_LIBNAME).$(EXT).$(TESTLUACWRAP_MAJOR)
 #------
 # Lua includes and libraries
 #
-LUA_INCDIR=-I/usr/include/lua5.1
+LUA_INCDIR=/usr/include/lua5.1
+LUACWRAP_INCDIR=../include
 
 #------
 # Top of your Lua installation
@@ -50,8 +51,7 @@ INSTALL_LINK=ln -f
 # for Linux
 CC=gcc
 DEF=
-# CFLAGS= $(LUAINC) $(DEF) -pedantic -Wall -O2 -fpic
-CFLAGS= $(LUA_INCDIR) $(DEF) -Wall -O2 -fpic
+CFLAGS= -I$(LUA_INCDIR) -I$(LUACWRAP_INCDIR) $(DEF) -Wall -O2 -fpic
 LDFLAGS=-O -shared -fpic
 LD=gcc 
 
