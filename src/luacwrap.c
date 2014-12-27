@@ -2542,13 +2542,13 @@ char* create_moduletable =
 "  end\n"
 "  function _M.getfield(t, f)\n"
 "    local v = t\n"
-"    for w in string.gfind(f, \"[^%.]+\") do\n"
+"    for w in string.gmatch(f, \"[^%.]+\") do\n"
 "      v = v[w]\n"
 "    end\n"
 "    return v\n"
 "  end\n"
 "  function _M.setfield(t, f, v)\n"
-"    for w, d in string.gfind(f, \"([^%.]+)(.?)\") do\n"
+"    for w, d in string.gmatch(f, \"([^%.]+)(.?)\") do\n"
 "      if d == \".\" then\n"            // not last field?
 "        t[w] = t[w] or {}\n"           // create table if absent
 "        t = t[w]\n"                    // get the table
