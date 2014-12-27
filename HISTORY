@@ -32,3 +32,13 @@
 * swiched back to make because luarocks builtin does not support 
   custom .def files
 
+1.0.4-1
+
+* added getmoduletable() function
+* improved checks in luacwrap_getdescriptor() function
+* fixed bug in Embedded_getouter() which caused problems with 
+  wrapped objects as parameters with parameter index > 1
+* added checks if luacwrap_getdescriptor() fails
+* replaced calls to obsolete string.gfind by string.gmatch
+* fixed wrapping of already wrapped objects via attach()
+
