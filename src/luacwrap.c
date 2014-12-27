@@ -1347,6 +1347,10 @@ static int luacwrap_type_dup(lua_State* L)
   LUASTACK_SET(L);
 
   desc = luacwrap_getdescriptor(L, 1);
+  if (!desc)
+  {
+     return luaL_argerror(L, 1, "Failed to get descriptor");
+  }
 
   lua_pushcfunction(L, luacwrap_type_new);
   if (!luacwrap_getmethodtable_byname(L, desc->name))
@@ -1401,7 +1405,7 @@ LUACWRAP_API  void* luacwrap_checktype   ( lua_State*          L
       , desc ? desc->name : "nil", uddesc ? uddesc->name : "nil", ud);
   }
 
-  // getting address depends on wether this is a boxed or an embedded object
+  // getting address depends on if this is a boxed or an embedded object
   if (luacwrap_getouter(L, ud, &offset))
   {
     PBYTE baseptr = lua_touserdata(L, -1);
@@ -1508,6 +1512,10 @@ static int luacwrap_type_set(lua_State* L)
 
   // get descriptor
   desc = luacwrap_getdescriptor(L, 1);
+  if (!desc)
+  {
+     return luaL_argerror(L, 1, "Failed to get descriptor");
+  }
 
   // init from table with init values
   if (lua_istable(L, 2))
