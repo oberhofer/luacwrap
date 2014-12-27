@@ -663,12 +663,18 @@ static luacwrap_Type* luacwrap_getdescriptor(lua_State* L, int ud)
   LUASTACK_SET(L);
 
   lua_getfenv(L, ud);
-  lua_getfield(L, -1, "$desc");
-  assert(!lua_isnil(L, -1));
-
-  desc = (luacwrap_Type*)lua_touserdata(L, -1);
-
-  lua_pop(L, 2);
+  if (!lua_isnil(L, -1))
+  {
+    lua_getfield(L, -1, "$desc");
+    if (!lua_isnil(L, -1))
+    {
+      desc = (luacwrap_Type*)lua_touserdata(L, -1);
+    }
+    // pop descriptor
+    lua_pop(L, 1);
+  }
+  // pop ENV
+  lua_pop(L, 1);
 
   LUASTACK_CLEAN(L, 0);
   return desc;
