@@ -4,7 +4,7 @@ version = "scm-1"
 
 source = {
   url    = "git://github.com/oberhofer/luacwrap.git",
-  branch = "master",
+  branch = "develop",
 }
 
 description = {
@@ -24,29 +24,60 @@ dependencies = {
   "lua == 5.1"
 }
 
-build = {
-  type = "make",
-  copy_directories = { "doc" },
-  install_variables = {
-    INST_PREFIX="$(PREFIX)",
-    INST_BINDIR="$(BINDIR)",
-    INST_LIBDIR="$(LIBDIR)",
-    INST_LUADIR="$(LUADIR)",
-    INST_CONFDIR="$(CONFDIR)",
-  },
-  platforms = {
+local function make_plat(plat)
+  local defines = {
+    win32 = {
+     "WIN32", "NDEBUG", "_WINDOWS", "_USRDLL", 
+     "WINVER=0x0600", 
+     "_WIN32_WINNT=0x0600", 
+     "_WIN32_IE=0x0600",
+    },
+    mingw32 = {
+     "WIN32", "NDEBUG", "_WINDOWS", "_USRDLL", 
+     "WINVER=0x0600", 
+     "_WIN32_WINNT=0x0600", 
+     "_WIN32_IE=0x0600",
+    },
     linux = {
-      build_variables = {
+    }
+  }
+  local build_variables = {
+    linux = {
         LIB_OPTION = "-shared",
         CFLAGS = '$(CFLAGS) -I$(LUA_INCDIR) -DLINUX',
         LIB_EXT = '.so'
-      },
-    },
-    win32 = {
-      build_variables = {
-        LIB_OPTION = "$(LUA_LIBDIR)\\lua5.1.lib",
-        CFLAGS = "$(CFLAGS) /I$(LUA_INCDIR) /DWINDOWS",
-      }
     }
   }
+
+  local modules = {
+    ["luacwrap"] = {
+      sources = { "src/luaaux.c",
+                  "src/luacwrap.c",
+                  "src/wrapnumeric.c",
+                  "src/defconstants.c",
+                },
+      defines = defines[plat],
+      build_variables = build_variables[plat] or {},
+      incdirs = {"./include" }
+    },
+    -- not necessary for releases
+    ["testluacwrap"] = {
+      sources = { "src/testluacwrap.c"
+                },
+      defines = defines[plat],
+      build_variables = build_variables[plat] or {},
+      incdirs = {"./include" }
+    }
+  }
+  return { modules = modules }
+end
+
+build = {
+  type = "builtin",
+  copy_directories = { "doc" },
+  platforms = {
+    linux   = make_plat("linux"),
+    win32   = make_plat("win32"),
+    mingw32 = make_plat("mingw32")
+  },
 }
