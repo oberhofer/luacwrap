@@ -42,3 +42,8 @@
 * replaced calls to obsolete string.gfind by string.gmatch
 * fixed wrapping of already wrapped objects via attach()
 
+1.1.0-1
+
+* Removed C interface from DLL exports and export it via a C interface struct.
+  This enables dependant C modules to load luacwrap dynamically via the 
+  Lua loader.

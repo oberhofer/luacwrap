@@ -10,7 +10,9 @@
 
 */////////////////////////////////////////////////////////////////////////
 
-#include "luacwrap.h"
+#pragma once
+
+#include "luacwrap_int.h"
 
 
 extern luacwrap_BasicType regType_INT8;

@@ -275,59 +275,102 @@ typedef struct luacwrap_DefUIntConst
 #define LUACWRAP_API extern
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+//////////////////////////////////////////////////////////////////////////
+/**
+    
+    LuaCWrap interface for C modules
+    
+    usage:
+
+      luacwrap_cinterface*  iface;
+    
+      // load luacwrap
+      // luacwrap = require("luacwrap")
+      lua_getglobal(L, "require");
+      lua_pushstring(L, "luacwrap");
+      lua_call(L, 1, 1);
+      
+      // get c interface
+      lua_getfield(L, "LUACWARP_CINTERFACE_NAME");
+      iface = (luacwrap_cinterface*)lua_touserdata(L, -1);
+      
+      // check interface version
+      if (LUACWARP_CINTERFACE_VERSION != iface->version)
+      {
+        lua_error(L, "Could not load luacwrap. Incompatiple C interface version. Expected %i got %i.", LUACWARP_CINTERFACE_VERSION, iface->version)
+      }
+      
+      // drop package table
+      lua_pop(L, 1);
+      
+      // call function
+      iface->registerbasictype(L, &desc);
+
+*/////////////////////////////////////////////////////////////////////////
+
 
 //
 // used to register a basic type descriptor in the basic type table
 //
-LUACWRAP_API int luacwrap_registerbasictype ( lua_State*          L
-                                            , luacwrap_BasicType* desc);
+typedef int (*luacwrap_registerbasictype_t  )( lua_State*          L
+                                             , luacwrap_BasicType* desc);
 
 //
 // register a type descriptor in the given (namespace) table
 //
-LUACWRAP_API int luacwrap_registertype  ( lua_State*            L
-                                        , int                   nsidx
-                                        , luacwrap_Type*        desc);
+typedef int (*luacwrap_registertype_t       )( lua_State*            L
+                                             , int                   nsidx
+                                             , luacwrap_Type*        desc);
 
 //
 // check a userdata type descriptor against a given type descriptor
 //
-LUACWRAP_API void* luacwrap_checktype   ( lua_State*            L
-                                        , int                   ud
-                                        , luacwrap_Type*        desc);
+typedef void* (*luacwrap_checktype_t        )( lua_State*            L
+                                             , int                   ud
+                                             , luacwrap_Type*        desc);
 
 //
 // create a boxed object on the top of the Lua stack, use initval to fill memory
 //
-LUACWRAP_API void* luacwrap_pushboxedobj( lua_State*            L
-                                        , luacwrap_Type*        desc
-                                        , int                   initval);
+typedef void* (*luacwrap_pushboxedobj_t     )( lua_State*            L
+                                             , luacwrap_Type*        desc
+                                             , int                   initval);
 
 //
 // push a pointer as a typed light (means not garbage collected) object 
 //
-LUACWRAP_API int luacwrap_pushtypedptr  ( lua_State*            L
-                                        , luacwrap_Type*        desc
-                                        , void*                 pObj);
+typedef int (*luacwrap_pushtypedptr_t       )( lua_State*            L
+                                             , luacwrap_Type*        desc
+                                             , void*                 pObj);
 
 //
 // access to reference table
 //
-LUACWRAP_API int luacwrap_createreference(lua_State* L, int index);
-LUACWRAP_API int luacwrap_pushreference  (lua_State* L, int tag);
+typedef int (*luacwrap_createreference_t    )(lua_State* L, int index);
+typedef int (*luacwrap_pushreference_t      )(lua_State* L, int tag);
 
 //
 //  Registers a list of global constants maintained in an array or
 //  luacwrap_DefUIntConst structs. 
 //
-LUACWRAP_API void luacwrap_defuintconstants ( lua_State*              L
-                                            , luacwrap_DefUIntConst*  constants);
+typedef void (*luacwrap_defuintconstants_t  )( lua_State*              L
+                                             , luacwrap_DefUIntConst*  constants);
 
 
-#ifdef __cplusplus
-}
-#endif
+#define LUACWARP_CINTERFACE_VERSION  1
+
+#define LUACWARP_CINTERFACE_NAME     "c_interface"
+
+typedef struct 
+{
+  int version;
+  luacwrap_registerbasictype_t  registerbasictype;
+  luacwrap_registertype_t       registertype;
+  luacwrap_checktype_t          checktype;
+  luacwrap_pushtypedptr_t       pushtypedptr;
+  luacwrap_pushboxedobj_t       pushboxedobj;
+  luacwrap_createreference_t    createreference;
+  luacwrap_pushreference_t      pushreference;
+  luacwrap_defuintconstants_t   defuintconstants;
+} luacwrap_cinterface;
 

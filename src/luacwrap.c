@@ -1232,9 +1232,9 @@ luaL_reg g_mtBoxed[ ] = {
   @return pointer to raw object memory
 
 *////////////////////////////////////////////////////////////////////////
-LUACWRAP_API void* luacwrap_pushboxedobj( lua_State*            L
-                                        , luacwrap_Type*        desc
-                                        , int                   initval)
+void* luacwrap_pushboxedobj( lua_State*            L
+                           , luacwrap_Type*        desc
+                           , int                   initval)
 {
   size_t udsize;
   void* ud;
@@ -1418,9 +1418,9 @@ static int luacwrap_getouter(lua_State* L, int ud, int* offset)
   check a userdata type descriptor against a given type descriptor
 
 *////////////////////////////////////////////////////////////////////////
-LUACWRAP_API  void* luacwrap_checktype   ( lua_State*          L
-                                         , int                 ud
-                                         , luacwrap_Type*      desc)
+void* luacwrap_checktype   ( lua_State*          L
+                           , int                 ud
+                           , luacwrap_Type*      desc)
 {
   luacwrap_Type* uddesc;
   int offset;
@@ -1450,7 +1450,7 @@ LUACWRAP_API  void* luacwrap_checktype   ( lua_State*          L
   push a typed pointer to a not garbage collected object
 
 *////////////////////////////////////////////////////////////////////////
-LUACWRAP_API int luacwrap_pushtypedptr(lua_State* L, luacwrap_Type* desc, void* pObj)
+int luacwrap_pushtypedptr(lua_State* L, luacwrap_Type* desc, void* pObj)
 {
   int result = 0;
   LUASTACK_SET(L);
@@ -1788,7 +1788,7 @@ luaL_reg g_mtDynTypeCtors[ ] = {
   @param[in]  desc    basic type descriptor
 
 */////////////////////////////////////////////////////////////////////////
-LUACWRAP_API int luacwrap_registerbasictype(lua_State* L, luacwrap_BasicType* desc)
+int luacwrap_registerbasictype(lua_State* L, luacwrap_BasicType* desc)
 {
   LUASTACK_SET(L);
 
@@ -1848,7 +1848,7 @@ LUACWRAP_API int luacwrap_registerbasictype(lua_State* L, luacwrap_BasicType* de
   @param[in]  index   stack index
 
 *////////////////////////////////////////////////////////////////////////
-LUACWRAP_API int luacwrap_createreference(lua_State* L, int index)
+int luacwrap_createreference(lua_State* L, int index)
 {
   int ref;
   int validx = abs_index(L, index);
@@ -1878,7 +1878,7 @@ LUACWRAP_API int luacwrap_createreference(lua_State* L, int index)
   @param[in]  L       lua state
 
 *////////////////////////////////////////////////////////////////////////
-LUACWRAP_API int luacwrap_release_reference(lua_State *L)
+int luacwrap_release_reference(lua_State *L)
 {
   int* pref = luacwrap_toreference(L, 1);
 
@@ -1970,7 +1970,7 @@ luaL_reg g_mtReferences[ ] = {
   @param[in]  reference reference index
 
 *////////////////////////////////////////////////////////////////////////
-LUACWRAP_API int luacwrap_pushreference(lua_State* L, int reference)
+int luacwrap_pushreference(lua_State* L, int reference)
 {
   int* ud;
 
@@ -2170,7 +2170,7 @@ luacwrap_BasicType regType_Reference =
   @param[in]  desc          type descriptor
 
 */////////////////////////////////////////////////////////////////////////
-LUACWRAP_API int luacwrap_registertype( lua_State*       L
+int luacwrap_registertype( lua_State*       L
                          , int              nsidx
                          , luacwrap_Type*   desc)
 {
@@ -2592,6 +2592,19 @@ char* create_moduletable =
 "  end\n"
 "  return _M\n";
 
+static luacwrap_cinterface g_cinterface = 
+{
+  LUACWARP_CINTERFACE_VERSION,
+  luacwrap_registerbasictype,
+  luacwrap_registertype,
+  luacwrap_checktype,
+  luacwrap_pushtypedptr,
+  luacwrap_pushboxedobj,
+  luacwrap_createreference,
+  luacwrap_pushreference,
+  luacwrap_defuintconstants
+};
+  
 //////////////////////////////////////////////////////////////////////////
 /**
 
@@ -2693,6 +2706,23 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
 
     // register reference type
     luacwrap_registerbasictype(L, &regType_Reference);
+    
+    // register c interface
+    lua_pushlightuserdata(L, &g_cinterface);
+    lua_setfield(L, -2, LUACWARP_CINTERFACE_NAME);
+
+    // set info fields
+    lua_pushstring(L, "Klaus Oberhofer");
+    lua_setfield(L, -2, "_AUTHOR");
+
+    lua_pushstring(L, "1.0.5-1");
+    lua_setfield(L, -2, "_VERSION");
+
+    lua_pushstring(L, "MIT license: See LICENSE for details.");
+    lua_setfield(L, -2, "_LICENSE");
+
+    lua_pushstring(L, "https://github.com/oberhofer/luacwrap");
+    lua_setfield(L, -2, "_URL");
   }
 
   LUASTACK_CLEAN(L, 1);

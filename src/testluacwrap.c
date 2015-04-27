@@ -17,6 +17,8 @@
 #include "luaaux.h"
 #include "luacwrap.h"
 
+// luacwrap c interface
+luacwrap_cinterface* g_luacwrapiface;
 
 #define LIBRARYNAME "testluacwrap"
 
@@ -121,7 +123,7 @@ int printTESTSTRUCT(lua_State* L)
 
   LUASTACK_SET(L);
 
-  ud = (TESTSTRUCT*)luacwrap_checktype(L, 1, &regType_TESTSTRUCT.hdr);
+  ud = (TESTSTRUCT*)g_luacwrapiface->checktype(L, 1, &regType_TESTSTRUCT.hdr);
   
   sprintf(szTemp, "TESTSTRUCT %p\n{\nu8:%i,\ni8:%i,\nu16:%i,\ni16:%i,\nu32:%i,\ni32:%i,\nptr:%p (%s),\nref:%i,\ninner.pszText:%p (%s)\n}\n", 
     ud,
@@ -203,7 +205,7 @@ int callwithBoxedTESTSTRUCT(lua_State* L)
   
     lua_pushvalue(L, -1);
 
-    ud = (TESTSTRUCT*)luacwrap_pushboxedobj(L, &regType_TESTSTRUCT.hdr, 0);
+    ud = (TESTSTRUCT*)g_luacwrapiface->pushboxedobj(L, &regType_TESTSTRUCT.hdr, 0);
     
     ud->u8  =   8;
     ud->i8  =  -8;
@@ -249,7 +251,7 @@ int callwithwrappedTESTSTRUCT(lua_State* L)
   if (lua_isfunction(L, 1))
   {
     lua_pushvalue(L, 1);
-    luacwrap_pushtypedptr(L, &regType_TESTSTRUCT.hdr, &ud);
+    g_luacwrapiface->pushtypedptr(L, &regType_TESTSTRUCT.hdr, &ud);
     lua_call(L, 1, 0);
   }
   
@@ -283,13 +285,13 @@ int callwithRefType(lua_State* L)
   // ud.ptr = "a ptr, too";
 
   // add parameter two as reference
-  ud.ref = luacwrap_createreference(L, 2);
+  ud.ref = g_luacwrapiface->createreference(L, 2);
 
   // expects a function as parameter
   if (lua_isfunction(L, 1))
   {
     lua_pushvalue(L, 1);
-    luacwrap_pushtypedptr(L, &regType_TESTSTRUCT.hdr, &ud);
+    g_luacwrapiface->pushtypedptr(L, &regType_TESTSTRUCT.hdr, &ud);
     lua_call(L, 1, 0);
   }
   
@@ -316,8 +318,8 @@ int checkInnerStructAccess(lua_State* L)
 
   LUASTACK_SET(L);
 
-  outer = (TESTSTRUCT*)luacwrap_checktype(L, 1, &regType_TESTSTRUCT.hdr);
-  inner = (INNERSTRUCT*)luacwrap_checktype(L, 2, &regType_INNERSTRUCT.hdr);
+  outer = (TESTSTRUCT*)g_luacwrapiface->checktype(L, 1, &regType_TESTSTRUCT.hdr);
+  inner = (INNERSTRUCT*)g_luacwrapiface->checktype(L, 2, &regType_INNERSTRUCT.hdr);
     
   printf("outer %p\n", outer);
   printf("inner %p\n", inner);
@@ -357,20 +359,33 @@ int luaopen_testluacwrap(lua_State *L)
 {
   LUASTACK_SET(L);
 
-  // require("luacwrap")
+  // luacwrap = require("luacwrap")
   lua_getglobal(L, "require");
   lua_pushstring(L, "luacwrap");
-  lua_call(L, 1, 0);
+  lua_call(L, 1, 1);
+
+  // get c interface
+  lua_getfield(L, -1, LUACWARP_CINTERFACE_NAME);
+  g_luacwrapiface = (luacwrap_cinterface*)lua_touserdata(L, -1);
+  
+  // check interface version
+  if (LUACWARP_CINTERFACE_VERSION != g_luacwrapiface->version)
+  {
+    luaL_error(L, "Could not load luacwrap. Incompatiple C interface version. Expected %i got %i.", LUACWARP_CINTERFACE_VERSION, g_luacwrapiface->version);
+  }
+  
+  // drop package table
+  lua_pop(L, 1);
 
   // register package functions
   lua_newtable(L);
   luaL_register(L, NULL, testluacwrap_functions);
 
-  luacwrap_registerbasictype(L, &regType_Buf32);
+  g_luacwrapiface->registerbasictype(L, &regType_Buf32);
 
-  luacwrap_registertype(L, LUA_GLOBALSINDEX, &regType_INNERSTRUCT.hdr);
-  luacwrap_registertype(L, LUA_GLOBALSINDEX, &regType_INT32_4.hdr);
-  luacwrap_registertype(L, LUA_GLOBALSINDEX, &regType_TESTSTRUCT.hdr);
+  g_luacwrapiface->registertype(L, LUA_GLOBALSINDEX, &regType_INNERSTRUCT.hdr);
+  g_luacwrapiface->registertype(L, LUA_GLOBALSINDEX, &regType_INT32_4.hdr);
+  g_luacwrapiface->registertype(L, LUA_GLOBALSINDEX, &regType_TESTSTRUCT.hdr);
 
   LUASTACK_CLEAN(L, 1);
   return 1;
