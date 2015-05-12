@@ -157,6 +157,33 @@ int luacwrap_type_set_reference(lua_State *L, int ud, int value, int offset)
 //////////////////////////////////////////////////////////////////////////
 /**
 
+  Remove a reference within environment of managed object to a
+  pointer referenced value.
+
+*////////////////////////////////////////////////////////////////////////
+int luacwrap_type_remove_reference(lua_State *L, int ud, int offset)
+{
+  LUASTACK_SET(L);
+  
+  // get environment
+  lua_getfenv(L, ud);
+  if (!lua_isnil(L, -1))
+  {
+    // env[offset] = nil
+    lua_pushnil(L);
+    lua_rawseti(L, -2, offset);
+
+    // pop environment table
+    lua_pop(L, 1);
+  }
+
+  LUASTACK_CLEAN(L, 0);
+  return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
   copy reference table from source object to destination object
 
 *////////////////////////////////////////////////////////////////////////
@@ -532,7 +559,7 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
 
         lua_getglobal(L, "tostring");
 
-        lua_getfield(L, LUA_GLOBALSINDEX, "table");
+        lua_getglobal(L, "table");
         lua_getfield(L, -1, "concat");
         // remove "table"
         lua_remove(L, -2);
@@ -582,7 +609,7 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
         lua_remove(L, -2);
 
         // string.gsub(res, "%z", "\\0")
-        lua_getfield(L, LUA_GLOBALSINDEX, "string");
+        lua_getglobal(L, "string");
         lua_getfield(L, -1, "gsub");
         lua_remove(L, -2);
 
@@ -2025,7 +2052,6 @@ static int* luacwrap_toreference(lua_State* L, int index)
 *////////////////////////////////////////////////////////////////////////
 static int luacwrap_pointer_set(luacwrap_BasicType* self, lua_State *L, PBYTE pData, int offset)
 {
-  int    setReference = 0;
   PBYTE* v = (PBYTE*)pData;
 
   switch (lua_type(L, -1))
@@ -2033,19 +2059,35 @@ static int luacwrap_pointer_set(luacwrap_BasicType* self, lua_State *L, PBYTE pD
     case LUA_TLIGHTUSERDATA:
     case LUA_TUSERDATA:
       {
-        setReference = 1;
         *v = (PBYTE)lua_touserdata(L, -1);
+        
+        if (*v)
+        {
+          // store reference in outer value
+          luacwrap_type_set_reference(L, 1, abs_index(L, -1), offset);
+        }
+        else
+        {
+          // remove a possible reference value (from a previously assigned value)
+          luacwrap_type_remove_reference(L, 1, offset);
+        }
       }
       break;
     case LUA_TSTRING:
       {
-        setReference = 1;
         *v = (PBYTE)lua_tostring(L, -1);
+
+        // store reference in outer value
+        luacwrap_type_set_reference(L, 1, abs_index(L, -1), offset);
       }
       break;
     case LUA_TNUMBER:
+    case LUA_TNIL:
       {
         *v = (PBYTE)lua_tointeger(L, -1);
+        
+        // remove a possible reference value (from a previously assigned value)
+        luacwrap_type_remove_reference(L, 1, offset);
       }
       break;
     default:
@@ -2053,12 +2095,6 @@ static int luacwrap_pointer_set(luacwrap_BasicType* self, lua_State *L, PBYTE pD
         luaL_error(L, "userdata, string or number expected, got %s", luaL_typename(L, 4));
       }
       break;
-  }
-
-  if (setReference)
-  {
-    // store reference in outer value
-    luacwrap_type_set_reference(L, 1, abs_index(L, -1), offset);
   }
 
   return 0;
@@ -2079,7 +2115,14 @@ static int luacwrap_pointer_get(luacwrap_BasicType* self, lua_State *L, PBYTE pD
   {
     // otherwise return raw pointer as light userdata
     PBYTE* v = (PBYTE*)pData;
-    lua_pushlightuserdata(L, *v);
+    if (*v)
+    {
+      lua_pushlightuserdata(L, *v);
+    }
+    else
+    {
+      lua_pushnil(L);
+    }
   }
 
   return 1;

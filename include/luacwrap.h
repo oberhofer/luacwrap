@@ -297,7 +297,7 @@ typedef struct luacwrap_DefUIntConst
       // check interface version
       if (LUACWARP_CINTERFACE_VERSION != iface->version)
       {
-        lua_error(L, "Could not load luacwrap. Incompatiple C interface version. Expected %i got %i.", LUACWARP_CINTERFACE_VERSION, iface->version)
+        luaL_error(L, "Could not load luacwrap. Incompatiple C interface version. Expected %i got %i.", LUACWARP_CINTERFACE_VERSION, iface->version);
       }
       
       // drop package table

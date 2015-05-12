@@ -72,6 +72,20 @@ assert(struct.intarray[2] == 20)
 assert(struct.intarray[3] == 30)
 assert(struct.intarray[4] == 40)
 
+print("--> test pointer reset (reference removal)")
+
+struct.ptr = "hello2"
+assert(struct.ptr == "hello2")
+
+struct.ptr = nil
+assert(struct.ptr == nil)
+
+struct.ptr = "hello2"
+assert(struct.ptr == "hello2")
+
+struct.ptr = 0
+assert(struct.ptr == nil)
+
 print("--> test table assignment")
 struct:set{
 	u8  = 91,
