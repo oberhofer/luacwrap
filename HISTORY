@@ -47,3 +47,6 @@
 * Removed C interface from DLL exports and export it via a C interface struct.
   This enables dependant C modules to load luacwrap dynamically via the 
   Lua loader.
+* moved rockspeck from make based to builtin based build
+* bugfix: remove a referenced value if nil or a number is assigned to 
+  a wrapped pointer
