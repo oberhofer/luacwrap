@@ -50,3 +50,9 @@
 * moved rockspeck from make based to builtin based build
 * bugfix: remove a referenced value if nil or a number is assigned to 
   a wrapped pointer
+
+1.2.0-1
+
+* support Lua 5.2
+* document C interface
+
