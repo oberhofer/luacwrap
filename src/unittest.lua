@@ -10,6 +10,10 @@ end
 print("--> create TESTSTRUCT")
 local struct = TESTSTRUCT:new()
 
+-- print(debug.getuservalue(struct))
+-- printtable(debug.getuservalue(struct))
+
+
 print("--> semantic of attach()")
 local attached = TESTSTRUCT:attach(struct)
 assert(struct.__ptr == attached.__ptr)
@@ -227,7 +231,7 @@ function myfunc(struct)
 
   local wrap = TESTSTRUCT:attach(struct)
   print(wrap)
-  printtable(debug.getfenv(wrap))
+  -- printtable(debug.getuservalue(wrap))
 
   print("wrap.__ptr", wrap.__ptr)
   print(testluacwrap.printTESTSTRUCT(wrap))
@@ -250,8 +254,8 @@ testluacwrap.callwithTESTSTRUCT(myfunc)
 print("--> test boxed")
 function myfunc(struct)
   print(struct)
-  print(debug.getfenv(struct))
-  printtable(debug.getfenv(struct))
+  -- print(debug.getuservalue(struct))
+  -- printtable(debug.getuservalue(struct))
   print("struct.__ptr", struct.__ptr)
   print(testluacwrap.printTESTSTRUCT(struct))
 end

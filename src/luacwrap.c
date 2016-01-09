@@ -83,6 +83,52 @@ static luacwrap_RecordMember* findMember(luacwrap_RecordMember* members, const c
 //////////////////////////////////////////////////////////////////////////
 /**
 
+  Get environment of managed object or nil for other objects
+
+*////////////////////////////////////////////////////////////////////////
+int luacwrap_getenvironment(lua_State *L, int ud)
+{
+#if (LUA_VERSION_NUM > 501)
+  if (LUA_TUSERDATA == lua_type(L, ud))
+  {
+    lua_getuservalue(L, ud);
+  }
+  else
+  {
+    lua_pushnil(L);
+  }
+#else
+  lua_getfenv(L, ud);
+#endif
+  return (!lua_isnil(L, -1));
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  Set environment of managed object or throw error
+
+*////////////////////////////////////////////////////////////////////////
+void luacwrap_setenvironment(lua_State *L, int ud)
+{
+#if (LUA_VERSION_NUM > 501)
+  if (LUA_TUSERDATA == lua_type(L, ud))
+  {
+    lua_setuservalue(L, ud);
+  }
+  else
+  {
+    const char *msg = lua_pushfstring(L, "luacwrap: try to set environment for parameter of type <%s>", luaL_typename(L, ud));
+    luaL_argerror(L, ud, msg);
+  }
+#else
+  lua_setfenv(L, ud);
+#endif
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
   Get reference from environment of managed object to get a
   pointer referenced value.
   The offset of the pointer is used as index in the reference table.
@@ -92,9 +138,7 @@ int luacwrap_type_get_reference(lua_State *L, int ud, int offset)
 {
   LUASTACK_SET(L);
 
-  // get environment
-  lua_getfenv(L, ud);
-  if (!lua_isnil(L, -1))
+  if (luacwrap_getenvironment(L, ud))
   {
     // result = env[offset]
     lua_rawgeti(L, -1, offset);
@@ -133,13 +177,12 @@ int luacwrap_type_set_reference(lua_State *L, int ud, int value, int offset)
   LUASTACK_SET(L);
 
   // create environment if not already present
-  lua_getfenv(L, ud);
-  if (lua_isnil(L, -1))
+  if (!luacwrap_getenvironment(L, ud))
   {
     lua_pop(L, 1);
     lua_newtable(L);
     lua_pushvalue(L, -1);
-    lua_setfenv(L, ud);
+    luacwrap_setenvironment(L, ud);
   }
 
   // env[offset] = value
@@ -166,8 +209,7 @@ int luacwrap_type_remove_reference(lua_State *L, int ud, int offset)
   LUASTACK_SET(L);
   
   // get environment
-  lua_getfenv(L, ud);
-  if (!lua_isnil(L, -1))
+  if (luacwrap_getenvironment(L, ud))
   {
     // env[offset] = nil
     lua_pushnil(L);
@@ -195,17 +237,15 @@ static int luacwrap_type_copy_references(lua_State* L
   LUASTACK_SET(L);
 
   // get environment from (outer) source
-  lua_getfenv(L, -1);
-  if (!lua_isnil(L, -1))
+  if (luacwrap_getenvironment(L, -1))
   {
     // create destination environment if not already present
-    lua_getfenv(L, -3);
-    if (lua_isnil(L, -1))
+    if (!luacwrap_getenvironment(L, -3))
     {
       lua_pop(L, 1);
       lua_newtable(L);
       lua_pushvalue(L, -1);
-      lua_setfenv(L, -4);
+      luacwrap_setenvironment(L, -4);
     }
 
     // copy source content to destination
@@ -375,8 +415,7 @@ static int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* 
         else
         {
           // try to return methods from method table
-          lua_getfenv(L, ud);
-          if (!lua_isnil(L, -1))
+          if (luacwrap_getenvironment(L, ud))
           {
             lua_getfield(L, -1, "$methods");
             lua_getfield(L, -1, stridx);
@@ -689,8 +728,7 @@ static luacwrap_Type* luacwrap_getdescriptor(lua_State* L, int ud)
 
   LUASTACK_SET(L);
 
-  lua_getfenv(L, ud);
-  if (!lua_isnil(L, -1))
+  if (luacwrap_getenvironment(L, ud))
   {
     lua_getfield(L, -1, "$desc");
     if (!lua_isnil(L, -1))
@@ -939,7 +977,7 @@ static int Embedded_getouter(lua_State* L, int ud, int* offset)
 }
 
 
-luaL_reg g_mtEmbedded[ ] = {
+luaL_Reg g_mtEmbedded[ ] = {
   { "__index"   , Embedded_index     },
   { "__newindex", Embedded_newindex  },
   { "__len"     , Embedded_len       },
@@ -1008,7 +1046,7 @@ static int pushEmbedded(lua_State* L, int ud, int offset, luacwrap_Type* desc)
   }
   lua_pushlightuserdata(L, desc);
   lua_setfield(L, -2, "$desc");
-  lua_setfenv(L, -2);
+  luacwrap_setenvironment(L, -2);
 
   LUASTACK_CLEAN(L, 1);
   return 1;
@@ -1120,9 +1158,9 @@ static int setEmbedded(lua_State* L, int offset, const char* typname)
         // limit length to maximum buffer size
         length = (bufdesc->size < length) ? bufdesc->size : length;
 
-        // clear buffer and copy value
-        memset(pobj, 0, bufdesc->size);
+        // copy value and clear rest of buffer
         memcpy(pobj, strval, length);
+        memset(pobj + length, 0, bufdesc->size - length);
       }
       break;
     case LUACWRAP_TC_RECORD:
@@ -1238,7 +1276,7 @@ static int Boxed_getouter(lua_State* L, int ud, int* offset)
   return 1;
 }
 
-luaL_reg g_mtBoxed[ ] = {
+luaL_Reg g_mtBoxed[ ] = {
   { "__index"   , Boxed_index     },
   { "__newindex", Boxed_newindex  },
   { "__len"     , Boxed_len},
@@ -1291,7 +1329,7 @@ void* luacwrap_pushboxedobj( lua_State*            L
   }
   lua_pushlightuserdata(L, desc);
   lua_setfield(L, -2, "$desc");
-  lua_setfenv(L, -2); 
+  luacwrap_setenvironment(L, -2);
 
   LUASTACK_CLEAN(L, 1);
 
@@ -1370,7 +1408,7 @@ static int luacwrap_type_new(lua_State* L)
   lua_setfield(L, -2, "$methods");
   lua_pushlightuserdata(L, desc);
   lua_setfield(L, -2, "$desc");
-  lua_setfenv(L, -2);
+  luacwrap_setenvironment(L, -2);
   
   // if optional init parameter present then call set()
   if (!lua_isnoneornil(L, 2) && !lua_isnumber(L, 2))
@@ -1427,11 +1465,9 @@ static int luacwrap_type_dup(lua_State* L)
 *////////////////////////////////////////////////////////////////////////
 static int luacwrap_getouter(lua_State* L, int ud, int* offset)
 {
-  GET_OBJECTOUTER getouter;
-
   if (luaL_getmetafield(L, ud, "getouter"))
   {
-    getouter = (GET_OBJECTOUTER)lua_touserdata(L, -1);
+    GET_OBJECTOUTER getouter = (GET_OBJECTOUTER)lua_touserdata(L, -1);
     lua_pop(L, 1);
 
     return getouter(L, ud, offset);
@@ -1765,7 +1801,7 @@ static int luacwrap_type_set(lua_State* L)
 }
 
 // used for static type descriptors
-luaL_reg g_mtTypeCtors[ ] = {
+luaL_Reg g_mtTypeCtors[ ] = {
   { "new"   , luacwrap_type_new     },
   { "set"   , luacwrap_type_set     },
   { "attach", luacwrap_type_attach  },
@@ -1799,7 +1835,7 @@ static int luacwrap_malloc_gc(lua_State* L)
 }
 
 // used for dynamically alloced type descriptors
-luaL_reg g_mtDynTypeCtors[ ] = {
+luaL_Reg g_mtDynTypeCtors[ ] = {
   { "new"   , luacwrap_type_new     },
   { "attach", luacwrap_type_attach  },
   { "__gc",   luacwrap_malloc_gc  },
@@ -1939,14 +1975,13 @@ int luacwrap_release_reference(lua_State *L)
 *////////////////////////////////////////////////////////////////////////
 int luacwrap_reference_index(lua_State *L)
 {
-  const char* stridx;
   int* pref = luacwrap_toreference(L, 1);
 
   LUASTACK_SET(L);
 
   if (pref)
   {
-    stridx = lua_tostring(L, 2);
+    const char* stridx = lua_tostring(L, 2);
     if (0 == strcmp(stridx, "value"))
     {
       // get access to _M.reftable
@@ -1983,7 +2018,7 @@ int luacwrap_reference_index(lua_State *L)
 }
 
 // metatable for references
-luaL_reg g_mtReferences[ ] = {
+luaL_Reg g_mtReferences[ ] = {
   { "__index", luacwrap_reference_index },
   { NULL, NULL }
 };
@@ -2024,6 +2059,8 @@ int luacwrap_pushreference(lua_State* L, int reference)
 *////////////////////////////////////////////////////////////////////////
 static int* luacwrap_toreference(lua_State* L, int index)
 {
+  const char *msg;
+  
   int* p = (int*)lua_touserdata(L, index);
   if (p != NULL)
   {
@@ -2038,7 +2075,10 @@ static int* luacwrap_toreference(lua_State* L, int index)
       }
     }
   }
-  luaL_typerror(L, index, "luacwrap reference");
+  
+  msg = lua_pushfstring(L, "luacwrap: reference expected, got %s", luaL_typename(L, index));
+  luaL_argerror(L, index, msg);
+  
   return NULL;
 }
 
@@ -2443,15 +2483,17 @@ static int luacwrap_registerstruct( lua_State*       L)
   int allocsize;
   int idx;
 
-  LUASTACK_SET(L);
-
   // get parameters
   name = luacwrap_storestring(L, 1, "non empty string expected on parameter #%d", 1);
   recsize = lua_tointeger(L, 2);
   luaL_checktype(L, 3, LUA_TTABLE);
 
   // get number of members
+#if (LUA_VERSION_NUM > 501)
+  nmembers  = lua_rawlen(L, 3);
+#else
   nmembers  = lua_objlen(L, 3);
+#endif
 
   // create record type descriptor
   allocsize = sizeof(luacwrap_RecordType) +
@@ -2524,8 +2566,6 @@ static int luacwrap_registerarray( lua_State*       L)
   const char* elemtypename;
   luacwrap_Type* elemtype;
   size_t len;
-
-  LUASTACK_SET(L);
 
   // get parameters
   name = lua_tolstring(L, 1, &len);
@@ -2701,13 +2741,21 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
     // create metatable for reference objects and store it in registry
     lua_pushlightuserdata(L, g_mtReferences);
     lua_newtable(L);
-    luaL_register( L, NULL, g_mtReferences);
+#if (LUA_VERSION_NUM > 501)
+    luaL_setfuncs(L, g_mtReferences, 0);
+#else
+    luaL_openlib(L, NULL, g_mtReferences, 0);
+#endif
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     // create metatable for boxed objects and store it in registry
     lua_pushlightuserdata(L, g_mtBoxed);
     lua_newtable(L);
-    luaL_register( L, NULL, g_mtBoxed);
+#if (LUA_VERSION_NUM > 501)
+    luaL_setfuncs(L, g_mtBoxed, 0);
+#else
+    luaL_openlib(L, NULL, g_mtBoxed, 0);
+#endif
 
     // register getouter in metatable
     lua_pushlightuserdata(L, Boxed_getouter);
@@ -2717,7 +2765,11 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
     // create metatable for embedded objects and store it in registry
     lua_pushlightuserdata(L, g_mtEmbedded);
     lua_newtable(L);
-    luaL_register( L, NULL, g_mtEmbedded);
+#if (LUA_VERSION_NUM > 501)
+    luaL_setfuncs(L, g_mtEmbedded, 0);
+#else
+    luaL_openlib(L, NULL, g_mtEmbedded, 0);
+#endif
 
     // register getouter in metatable
     lua_pushlightuserdata(L, Embedded_getouter);
@@ -2727,7 +2779,12 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
     // create metatable for type wrappers and store it in registry
     lua_pushlightuserdata(L, g_mtTypeCtors);
     lua_newtable(L);
-    luaL_register( L, NULL, g_mtTypeCtors);
+#if (LUA_VERSION_NUM > 501)
+    luaL_setfuncs(L, g_mtTypeCtors, 0);
+#else
+    luaL_openlib(L, NULL, g_mtTypeCtors, 0);
+#endif
+    
     lua_pushvalue(L, -1);
     lua_setfield(L, -1, "__index");
     lua_rawset(L, LUA_REGISTRYINDEX);
@@ -2736,7 +2793,12 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
     // and store it in registry
     lua_pushlightuserdata(L, g_mtDynTypeCtors);
     lua_newtable(L);
-    luaL_register( L, NULL, g_mtDynTypeCtors);
+#if (LUA_VERSION_NUM > 501)
+    luaL_setfuncs(L, g_mtDynTypeCtors, 0);
+#else
+    luaL_openlib(L, NULL, g_mtDynTypeCtors, 0);
+#endif
+    
     lua_pushvalue(L, -1);
     lua_setfield(L, -1, "__index");
     lua_rawset(L, LUA_REGISTRYINDEX);

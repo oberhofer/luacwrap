@@ -125,7 +125,7 @@ int printTESTSTRUCT(lua_State* L)
 
   ud = (TESTSTRUCT*)g_luacwrapiface->checktype(L, 1, &regType_TESTSTRUCT.hdr);
   
-  sprintf(szTemp, "TESTSTRUCT %p\n{\nu8:%i,\ni8:%i,\nu16:%i,\ni16:%i,\nu32:%i,\ni32:%i,\nptr:%p (%s),\nref:%i,\ninner.pszText:%p (%s)\n}\n", 
+  sprintf(szTemp, "TESTSTRUCT %p\n{\nu8:%u,\ni8:%i,\nu16:%u,\ni16:%i,\nu32:%u,\ni32:%i,\nptr:%p (%s),\nref:%i,\ninner.pszText:%p (%s)\n}\n", 
     ud,
     ud->u8,
     ud->i8,
@@ -336,8 +336,7 @@ int checkInnerStructAccess(lua_State* L)
   return 1;
 }
 
-
-static const luaL_reg testluacwrap_functions[ ] = {
+static const luaL_Reg testluacwrap_functions[ ] = {
   { "printTESTSTRUCT"   , printTESTSTRUCT },
   { "callwithTESTSTRUCT", callwithTESTSTRUCT },
   { "callwithBoxedTESTSTRUCT", callwithBoxedTESTSTRUCT },
@@ -367,25 +366,42 @@ int luaopen_testluacwrap(lua_State *L)
   // get c interface
   lua_getfield(L, -1, LUACWARP_CINTERFACE_NAME);
   g_luacwrapiface = (luacwrap_cinterface*)lua_touserdata(L, -1);
-  
+
+  // check for C interface
+  if (NULL == g_luacwrapiface)
+  {
+    luaL_error(L, "Could not load luacwrap: No C interface available.");
+  }
+
   // check interface version
   if (LUACWARP_CINTERFACE_VERSION != g_luacwrapiface->version)
   {
     luaL_error(L, "Could not load luacwrap. Incompatiple C interface version. Expected %i got %i.", LUACWARP_CINTERFACE_VERSION, g_luacwrapiface->version);
   }
-  
-  // drop package table
-  lua_pop(L, 1);
+
+  // drop C interface and drop package table
+  lua_pop(L, 2);
 
   // register package functions
   lua_newtable(L);
-  luaL_register(L, NULL, testluacwrap_functions);
+#if (LUA_VERSION_NUM > 501)
+  luaL_setfuncs(L, testluacwrap_functions, 0);
+#else
+  luaL_openlib(L, NULL, testluacwrap_functions, 0);
+#endif
 
+  // register types
   g_luacwrapiface->registerbasictype(L, &regType_Buf32);
 
-  g_luacwrapiface->registertype(L, LUA_GLOBALSINDEX, &regType_INNERSTRUCT.hdr);
-  g_luacwrapiface->registertype(L, LUA_GLOBALSINDEX, &regType_INT32_4.hdr);
-  g_luacwrapiface->registertype(L, LUA_GLOBALSINDEX, &regType_TESTSTRUCT.hdr);
+#if (LUA_VERSION_NUM > 501)
+  lua_pushglobaltable(L);
+#else
+  lua_pushvalue(L, LUA_GLOBALSINDEX);
+#endif
+  g_luacwrapiface->registertype(L, -1, &regType_INNERSTRUCT.hdr);
+  g_luacwrapiface->registertype(L, -1, &regType_INT32_4.hdr);
+  g_luacwrapiface->registertype(L, -1, &regType_TESTSTRUCT.hdr);
+  lua_pop(L, 1);
 
   LUASTACK_CLEAN(L, 1);
   return 1;

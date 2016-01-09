@@ -21,7 +21,7 @@ description = {
 supported_platforms = { "linux", "windows" }
 
 dependencies = {
-  "lua == 5.1"
+  "lua >= 5.1"
 }
 
 local function make_plat(plat)
@@ -74,7 +74,7 @@ end
 
 build = {
   type = "builtin",
-  copy_directories = { "doc" },
+  copy_directories = { "doc", "include" },
   platforms = {
     linux   = make_plat("linux"),
     win32   = make_plat("win32"),
