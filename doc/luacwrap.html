@@ -254,6 +254,34 @@ print(rc:width(), rc:height())
 
 <h2>C-API</h2>
 
+<p>Since version 1.1.0-1 the C interface is exported it via a C interface struct.
+This enables dependant C modules to load luacwrap dynamically via the Lua loader 
+and avoids problems with module lookup (especially under Windows).</p>
+
+<p>Typically during the module_open() function the dependant module gets access to the 
+C interface struct with the following code:</p>
+
+<div class="code">// luacwrap = require("luacwrap")
+lua_getglobal(L, "require");
+lua_pushstring(L, "luacwrap");
+lua_call(L, 1, 1);
+
+// get c interface
+lua_getfield(L, -1, LUACWARP_CINTERFACE_NAME);
+g_luacwrapiface = (luacwrap_cinterface*)lua_touserdata(L, -1);
+
+// check interface version
+if (LUACWARP_CINTERFACE_VERSION != g_luacwrapiface-&gt;version)
+{
+  luaL_error(L, "Could not load luacwrap. Incompatiple C interface version. Expected %i got %i.", LUACWARP_CINTERFACE_VERSION, g_luacwrapiface-&gt;version);
+}
+
+// drop package table
+lua_pop(L, 1);
+</div>
+
+<p>The resulting struct pointer (g_luacwrapiface) is then used in subsequent calls.</p>
+
 <h3>Registering type descriptors</h3>
 
 <h4>Register array types</h4>
@@ -261,7 +289,7 @@ print(rc:width(), rc:height())
 <div class="code">// describe array type
 LUACWRAP_DEFINEARRAY(LIBRARYNAME, INT32, 4)
 
-luacwrap_registertype(L, LUA_GLOBALSINDEX, &amp;regType_INT32_4.hdr);
+g_luacwrapiface-&gt;registertype(L, LUA_GLOBALSINDEX, &amp;regType_INT32_4.hdr);
 </div>
 
 <h4>Register record types</h4>
@@ -277,7 +305,7 @@ static luacwrap_RecordMember s_memberINNERSTRUCT[] =
 LUACWRAP_DEFINESTRUCT(LIBRARYNAME, INNERSTRUCT)
 
 // register type within globals table
-luacwrap_registertype(L, LUA_GLOBALSINDEX, &amp;regType_INNERSTRUCT.hdr);
+g_luacwrapiface-&gt;registertype(L, LUA_GLOBALSINDEX, &amp;regType_INNERSTRUCT.hdr);
 </div>
 
 <h4>Register buffer types</h4>
@@ -289,14 +317,14 @@ luacwrap_registertype(L, LUA_GLOBALSINDEX, &amp;regType_INNERSTRUCT.hdr);
   32
 };
 
-luacwrap_registerbasictype(L, &amp;regType_Buf32);
+g_luacwrapiface-&gt;registerbasictype(L, &amp;regType_Buf32);
 </div>
 
 <h4>Register basic types</h4>
 
 <p>For these types you have to specify appropriate get and set callbacks which handles
 marshalling. Therefore registering basic types is only possible via the C API.
-Use the <code>luacwrap_registerbasictype</code> function and see the source of LuaCwrap
+Use the <code>registerbasictype</code> function and see the source of LuaCwrap
 for usage examples.</p>
 
 <h3>Create wrappers for local C objects (light embedded objects)</h3>
@@ -316,7 +344,7 @@ ud.i8  =  -8;
 lua_getglobal(L, "myfunction");
 
 // push wrapper
-luacwrap_pushtypedptr(L, &amp;regType_TESTSTRUCT.hdr, &amp;ud);
+g_luacwrapiface-&gt;pushtypedptr(L, &amp;regType_TESTSTRUCT.hdr, &amp;ud);
 
 lua_call(L, 1, 0);
 </div>
@@ -340,14 +368,14 @@ by the Lua VM.
 <h3>Create boxed instances</h3>
 
 <p>Lifetime of boxed objects is maintained by the Lua garbage collector. To create them from the C API 
-you use the luacwrap_pushboxedobj() function. </p>
+you use the pushboxedobj() function. </p>
 
 <div class="code">TESTSTRUCT* ud;
 
 // call "myfunction" with boxed object as parameter 1
 lua_getglobal(L, "myfunction");
 
-ud = (TESTSTRUCT*)luacwrap_pushboxedobj(L, &amp;regType_TESTSTRUCT.hdr, 0);
+ud = (TESTSTRUCT*)g_luacwrapiface-&gt;pushboxedobj(L, &amp;regType_TESTSTRUCT.hdr, 0);
 
 ud-&gt;u8  =   8;
 ud-&gt;i8  =  -8;
