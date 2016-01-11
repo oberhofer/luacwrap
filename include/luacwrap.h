@@ -215,7 +215,7 @@ typedef struct luacwrap_EmbeddedObject  luacwrap_EmbeddedObject;
   helper macr to create struct descriptors
 
 */////////////////////////////////////////////////////////////////////////
-#define LUACWRAP_DEFINESTRUCT(lib, name)                \
+#define LUACWRAP_DEFINESTRUCT(name)                     \
 luacwrap_RecordType regType_##name =                    \
 {                                                       \
   {                                                     \
@@ -234,7 +234,7 @@ luacwrap_RecordType regType_##name =                    \
   helper macro to create array descriptors
 
 */////////////////////////////////////////////////////////////////////////
-#define LUACWRAP_DEFINEARRAY(lib, elemtype, nelems)     \
+#define LUACWRAP_DEFINEARRAY(elemtype, nelems)          \
 luacwrap_ArrayType regType_##elemtype##_##nelems =      \
 {                                                       \
   {                                                     \

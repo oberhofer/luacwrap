@@ -491,7 +491,12 @@ These are
   * $ptr       (pointer types)
   * $ref       (reference type utilizing the Lua reference mechanism)
   * $bufn      (buffer with length n, e.g. $buf128)
- 
+
+along with the platform dependant types
+
+  * $int,  $uint  (signed/unsigned int)
+  * $long, $ulong (signed/unsigned long)
+
 Buffers are registered within the type table, too. The name of buffer types is derived
 from the buffer length ($bufn, where n denotes the buffer length).
 If a buffer with the requested size is already registered, the existing one is returned.
