@@ -66,7 +66,7 @@ static luacwrap_RecordMember s_memberINNERSTRUCT[] =
 };
 
 // type descriptor for INNERSTRUCT
-LUACWRAP_DEFINESTRUCT(LIBRARYNAME, INNERSTRUCT)
+LUACWRAP_DEFINESTRUCT(INNERSTRUCT)
 
 
 // member descriptor for TESTSTRUCT
@@ -87,11 +87,11 @@ static luacwrap_RecordMember s_memberTESTSTRUCT[] =
 };
 
 // type descriptor for TESTSTRUCT
-LUACWRAP_DEFINESTRUCT(LIBRARYNAME, TESTSTRUCT)
+LUACWRAP_DEFINESTRUCT(TESTSTRUCT)
 
 // describe array type, gets array name "regType_INT32_4"
 // and type name "INT32_4"
-// LUACWRAP_DEFINEARRAY(LIBRARYNAME, INT32, 4)
+// LUACWRAP_DEFINEARRAY(INT32, 4)
 
 // same as 
 luacwrap_ArrayType regType_INT32_4 =
