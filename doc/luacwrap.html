@@ -144,20 +144,83 @@ for unit testing.</p>
 
 <h3>Registering type descriptors</h3>
 
+<p>Maybe the primary use case will be to register type descriptors from C but there is also a 
+Lua API to reach this functionality.</p>
+
 <h4>Register array types</h4>
 
 <div class="code">type = luacwrap.registerarray(name, size, elemtype)
 </div>
 
+<p>You can use <code>registerarray</code> to register a new array type.
+Example:</p>
+
+<div class="code">-- create type descriptor
+type_double128 = luacwrap.registerarray("double128", 128, "$dbl")
+-- create instance
+local myarray = type_double128:new()
+</div>
+
+<h4>Register/Create buffer types</h4>
+
+<div class="code">type = luacwrap.registerbuffer(name, size)
+</div>
+
+<p>You can use <code>registerbuffer</code> to register a new buffer type.</p>
+
+<p>Example:</p>
+
+<div class="code">-- create type descriptor
+type_mybuf256 = luacwrap.registerbuffer("mybuf256", 256)
+-- create instance
+local mybuf = type_mybuf256:new()
+</div>
+
+<p>To create buffers there is a dedicated <code>createbuffer</code> function
+which combines the creation of the appropriate type descriptor
+with the creation of a buffer instance via the <code>new</code> method.
+The above code could be shrinked down to</p>
+
+<div class="code">local mybuf = luacwrap.createbuffer(256)
+</div>
+
+<p>The <code>createbuffer</code> function maintains an internal table indexed by 
+the buffer size to create type descriptors only when needed.</p>
+
 <h4>Register record types</h4>
 
-<div class="code">type = luacwrap.registerstruct(name, members)
+<div class="code">type = luacwrap.registerstruct(name, size, members)
 </div>
 
-<h4>Register buffer types</h4>
+<p>You can use <code>registerstruct</code> to register a new record type.
+The parameter <code>members</code> is a table with entries for each struct member.
+This entries have the form </p>
 
-<div class="code">type, name = luacwrap.registerbuffer(name, size)
+<div class="code">{ name, offset, type }
 </div>
+
+<p>Usage:</p>
+
+<div class="code">-- create type descriptor
+type_mystruct = luacwrap.registerstruct("mystruct", 8,
+  {
+    { "member1", 0, "$i32" },
+    { "member2", 4, "$i32" }
+  }
+)
+-- create struct instance
+local mystruct = type_mystruct:new()
+-- access members
+mystruct.member1 = 10
+mystruct.member2 = 22
+</div>
+
+
+<div class="attention">
+Currently there is no check if a member declaration could address memory outside 
+the struct size. 
+</div>
+
 
 <h3>Create/Attach instances</h3>
 
@@ -518,7 +581,7 @@ If a buffer with the requested size is already registered, the existing one is r
 This means that LuaCwrap is free software and can be used for both academic
 and commercial purposes at absolutely no cost.</p>
 
-<p>Copyright (C) 2011 Klaus Oberhofer</p>
+<p>Copyright (C) 2011-2017 Klaus Oberhofer</p>
 
 <p>Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

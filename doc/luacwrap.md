@@ -173,18 +173,74 @@ for unit testing.
 
 ### Registering type descriptors
 
+Maybe the primary use case will be to register type descriptors from C but there is also a 
+Lua API to reach this functionality.
+
 #### Register array types
 
     type = luacwrap.registerarray(name, size, elemtype)
+    
+You can use `registerarray` to register a new array type.
+Example:
 
+    -- create type descriptor
+    type_double128 = luacwrap.registerarray("double128", 128, "$dbl")
+    -- create instance
+    local myarray = type_double128:new()
+    
+#### Register/Create buffer types
+
+    type = luacwrap.registerbuffer(name, size)
+
+You can use `registerbuffer` to register a new buffer type.
+
+Example:
+
+    -- create type descriptor
+    type_mybuf256 = luacwrap.registerbuffer("mybuf256", 256)
+    -- create instance
+    local mybuf = type_mybuf256:new()
+    
+To create buffers there is a dedicated `createbuffer` function
+which combines the creation of the appropriate type descriptor
+with the creation of a buffer instance via the `new` method.
+The above code could be shrinked down to
+
+    local mybuf = luacwrap.createbuffer(256)
+    
+The `createbuffer` function maintains an internal table indexed by 
+the buffer size to create type descriptors only when needed.
+    
 #### Register record types
 
-    type = luacwrap.registerstruct(name, members)
+    type = luacwrap.registerstruct(name, size, members)
 
-#### Register buffer types
+You can use `registerstruct` to register a new record type.
+The parameter `members` is a table with entries for each struct member.
+This entries have the form 
 
-    type, name = luacwrap.registerbuffer(name, size)
+    { name, offset, type }
+    
+Usage:
 
+    -- create type descriptor
+    type_mystruct = luacwrap.registerstruct("mystruct", 8,
+      {
+        { "member1", 0, "$i32" },
+        { "member2", 4, "$i32" }
+      }
+    )
+    -- create struct instance
+    local mystruct = type_mystruct:new()
+    -- access members
+    mystruct.member1 = 10
+    mystruct.member2 = 22
+
+<div class="attention">
+Currently there is no check if a member declaration could address memory outside 
+the struct size. 
+</div>
+    
 ### Create/Attach instances
 
 Every registered type descriptor has two methods `new` and `attach` which could be used to
@@ -515,7 +571,7 @@ LuaCwrap is licensed under the terms of the MIT license reproduced below.
 This means that LuaCwrap is free software and can be used for both academic
 and commercial purposes at absolutely no cost.
 
-Copyright (C) 2011 Klaus Oberhofer
+Copyright (C) 2011-2017 Klaus Oberhofer
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
