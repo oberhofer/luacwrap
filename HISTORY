@@ -60,3 +60,10 @@
 
 * API change: removed lib param from LUACWRAP_DEFINESTRUCT and LUACWRAP_DEFINEARRAY macro
 * added support for platform dependant basic types (INT, UINT, LONG, ULONG)
+
+1.3.1-1
+
+* etc/mkvs.bat now works with different Lua versions (5.1 - 5.3)
+* fixed implementation of parts of the Lua interface (createbuffer, 
+  registerarray and registerstruct function)
+* better documentation for the Lua API
