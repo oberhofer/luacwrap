@@ -2850,7 +2850,7 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
     lua_pushstring(L, "Klaus Oberhofer");
     lua_setfield(L, -2, "_AUTHOR");
 
-    lua_pushstring(L, "1.3.0-1");
+    lua_pushstring(L, "1.3.1-1");
     lua_setfield(L, -2, "_VERSION");
 
     lua_pushstring(L, "MIT license: See LICENSE for details.");
