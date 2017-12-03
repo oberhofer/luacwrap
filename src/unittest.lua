@@ -292,4 +292,44 @@ end
 testluacwrap.callwithRefType(wrapfunc, "callwithRefType")
 
 
+luacwrap = require("luacwrap")
+
+print("--> checkbuffers")
+function check_buffers()
+    local mybuf = luacwrap.createbuffer(256)
+    print(mybuf)
+    local mybuf2 = luacwrap.createbuffer(256)
+    print(mybuf2)
+end
+check_buffers()
+
+print("--> checkarrays")
+function check_arrays()
+    -- create type descriptor
+    type_double128 = luacwrap.registerarray("double128", 128, "$dbl")
+    -- create instance
+    local myarray = type_double128:new()
+    print(myarray)
+end
+check_arrays()
+
+print("--> checkstructs")
+function check_structs()
+    -- create type descriptor
+    local type_mystruct = luacwrap.registerstruct("mystruct", 8,
+      {
+        { "member1", 0, "$i32" },
+        { "member2", 4, "$i32" }
+      }
+    )
+    -- create struct instance
+    local mystruct = type_mystruct:new()
+    -- access members
+    mystruct.member1 = 10
+    mystruct.member2 = 22
+    print(mystruct)
+end
+-- check_structs()
+
+
 print("--> all checks passed")

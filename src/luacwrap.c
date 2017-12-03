@@ -22,6 +22,15 @@
 // address of this string is used as key to register module table _M
 const char* g_keyLibraryTable = "luacwrap";
 
+// _M.$buftypes to store references
+const char* g_keyRefTable     = "reftable";
+
+// _M.$buftypes to cache strings
+const char* g_keyStringTable  = "stringtable";
+
+// _M.$buftypes to cache buffer type descriptors
+const char* g_keyBufTypes     = "buftypes";
+
 
 // convert a stack index to an absolute (positive) index
 #define abs_index(L, i)   ((i) > 0 || (i) <= LUA_REGISTRYINDEX ? (i) : \
@@ -1920,7 +1929,7 @@ int luacwrap_createreference(lua_State* L, int index)
 
   // get access to _M.reftable
   getmoduletable(L);
-  lua_getfield(L, -1, "reftable");
+  lua_getfield(L, -1, g_keyRefTable);
   assert(lua_istable(L, -1));
 
   lua_pushvalue(L, validx);
@@ -1951,7 +1960,7 @@ int luacwrap_release_reference(lua_State *L)
   {
     // get access to _M.reftable
     getmoduletable(L);
-    lua_getfield(L, -1, "reftable");
+    lua_getfield(L, -1, g_keyRefTable);
     assert(lua_istable(L, -1));
 
     lua_pushnil(L);
@@ -1986,7 +1995,7 @@ int luacwrap_reference_index(lua_State *L)
     {
       // get access to _M.reftable
       getmoduletable(L);
-      lua_getfield(L, -1, "reftable");
+      lua_getfield(L, -1, g_keyRefTable);
       assert(lua_istable(L, -1));
 
       lua_rawgeti(L, -1, *pref);
@@ -2370,7 +2379,7 @@ static const char* luacwrap_storestring(lua_State* L, int idx, const char* errms
   {
     // get access to _M.stringtable
     getmoduletable(L);
-    lua_getfield(L, -1, "stringtable");
+    lua_getfield(L, -1, g_keyStringTable);
     assert(lua_istable(L, -1));
 
     // lookup in _M.stringtable
@@ -2513,7 +2522,7 @@ static int luacwrap_registerstruct( lua_State*       L)
 
   // fill members table
   idx = 1;
-  while (idx < nmembers)
+  while (idx <= nmembers)
   {
     int memberoffset;
     const char* membername;
@@ -2621,26 +2630,43 @@ static int luacwrap_createbuffer(lua_State*       L)
 
   bufsize = lua_tointeger(L, 1);
 
-  // get/create buffer type indexed by size under _M.buftypes
+  // get/create buffer type indexed by size under _M.$buftypes
   getmoduletable(L);
-  lua_getfield(L, -1, "buftypes");
+  lua_getfield(L, -1, g_keyBufTypes);
+  assert( lua_istable(L, -1));
+
+  // drop module table
   lua_remove(L, -2);
 
+  // lookup buffer type descriptor by buffer size
   lua_pushinteger(L, bufsize);
   lua_rawget(L, -2);
   if (lua_isnil(L, -1))
   {
+    // pop nil
+    lua_pop(L, 1);
+
     // create new buffer type
+    lua_pushcfunction(L, luacwrap_registerbuffer);
     lua_pushfstring(L, "$buf%d", bufsize);
     lua_pushinteger(L, bufsize);
-    luacwrap_registerbuffer(L);
+    lua_call(L, 2, 1);
+
+    // store in cache
+    lua_pushvalue(L, -1);
+    lua_rawseti(L, -3, bufsize);
   }
+  // _M.$buftypes table
+  lua_remove(L, -2);
 
   // buffer type descriptor is on top
   // create a new buffer instance by calling new()
   luaL_getmetafield(L, -1, "new");
   lua_pushvalue(L, -2);
   lua_call(L, 1, 1);
+
+  // drop buffer type descriptor
+  lua_remove(L, -2);
 
   LUASTACK_CLEAN(L, 1);
   return 1;
@@ -2729,9 +2755,13 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
 
     // add reftable and string table to module table
     lua_newtable(L);
-    lua_setfield(L, -2, "reftable");
+    lua_setfield(L, -2, g_keyRefTable);
     lua_newtable(L);
-    lua_setfield(L, -2, "stringtable");
+    lua_setfield(L, -2, g_keyStringTable);
+
+    // add _M.$buftypes to cache buffer type descriptors
+    lua_newtable(L);
+    lua_setfield(L, -2, g_keyBufTypes);
 
     // store module table in registry
     lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
