@@ -51,6 +51,10 @@ WRAPPER(UINT,   unsigned int,   "$uint")
 WRAPPER(LONG,   long,           "$long")
 WRAPPER(ULONG,  unsigned long,  "$ulong")
 
+// floating point types
+WRAPPER(FLOAT,  float,  "$flt")
+WRAPPER(DOUBLE, double, "$dbl")
+
 
 //////////////////////////////////////////////////////////////////////////
 /**
@@ -74,6 +78,10 @@ int luacwrap_registerNumericTypes(lua_State* L)
   luacwrap_registerbasictype(L, &regType_UINT);
   luacwrap_registerbasictype(L, &regType_LONG);
   luacwrap_registerbasictype(L, &regType_ULONG);
+
+  // floating point types
+  luacwrap_registerbasictype(L, &regType_FLOAT);
+  luacwrap_registerbasictype(L, &regType_DOUBLE);
   
   LUASTACK_CLEAN(L, 0);
   return 0;
