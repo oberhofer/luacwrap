@@ -2583,7 +2583,7 @@ static int luacwrap_registerarray( lua_State*       L)
     luaL_error(L, "non empty string expected on parameter #1");
   }
   elemcount = lua_tointeger(L, 2);
-  elemtypename = lua_tolstring(L, 1, &len);
+  elemtypename = lua_tolstring(L, 3, &len);
   if (0 == len)
   {
     luaL_error(L, "non empty string expected on parameter #3");

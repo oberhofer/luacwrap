@@ -300,13 +300,17 @@ function check_buffers()
     print(mybuf)
     local mybuf2 = luacwrap.createbuffer(256)
     print(mybuf2)
+
+    -- create instance
+    mybuf = "hello"
+    print("content of mybuf:", mybuf)
 end
 check_buffers()
 
 print("--> checkarrays")
 function check_arrays()
     -- create type descriptor
-    type_double128 = luacwrap.registerarray("double128", 128, "$dbl")
+    local type_double128 = luacwrap.registerarray("double128", 128, "$dbl")
     -- create instance
     local myarray = type_double128:new()
     print(myarray)
@@ -329,7 +333,7 @@ function check_structs()
     mystruct.member2 = 22
     print(mystruct)
 end
--- check_structs()
+check_structs()
 
 
 print("--> all checks passed")
