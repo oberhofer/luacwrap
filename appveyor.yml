@@ -27,6 +27,3 @@ build_script:
 test_script:
   - cd src
   - lua unittest.lua
-
-after_test:
-  - if "%LUA%"=="lua 5.1" (luarocks show bit32 || luarocks install bit32)
