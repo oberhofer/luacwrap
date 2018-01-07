@@ -1,0 +1,32 @@
+version: 1.3.1.{build}-test
+
+environment:
+  matrix:
+  - LUA: "lua 5.1"
+  - LUA: "lua 5.2"
+  - LUA: "lua 5.3"
+
+platform:
+  - x64
+  - x86
+  - mingw
+
+before_build:
+  - set PATH=C:\Python27\Scripts;%PATH%
+  - pip install hererocks
+  - if /I "%platform%"=="x86" set HR_TARGET=vs_32
+  - if /I "%platform%"=="x64" set HR_TARGET=vs_64
+  - if /I "%platform%"=="mingw" set HR_TARGET=mingw
+  - if /I "%platform%"=="mingw" set PATH=C:\MinGW\bin;%PATH%
+  - hererocks env --%LUA% --target %HR_TARGET% -rlatest
+  - call env\bin\activate
+
+build_script:
+  - luarocks make luacwrap-scm-1.rockspec
+
+test_script:
+  - cd src
+  - lua unittest.lua
+
+after_test:
+  - if "%LUA%"=="lua 5.1" (luarocks show bit32 || luarocks install bit32)
