@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/oberhofer/luacwrap.svg?branch=master)](https://travis-ci.org/oberhofer/luacwrap)
 [![Build status](https://ci.appveyor.com/api/projects/status/github/oberhofer/luacwrap?svg=true&branch=master)](https://ci.appveyor.com/project/oberhofer/luacwrap/branch/master)
 
 # Introduction

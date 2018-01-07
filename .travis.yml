@@ -25,7 +25,6 @@ install:
   - luarocks make $ROCKSPEC CFLAGS="-O2 -fPIC" LIBFLAG="-shared"
 
 script: 
-  - lua -e "print(require'path.info'.version)"
   - cd src
   - lua unittest.lua
 
