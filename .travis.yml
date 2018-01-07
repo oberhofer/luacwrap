@@ -1,0 +1,35 @@
+language: c
+sudo: false
+
+env:
+  global:
+    - LUAROCKS=2.4.2
+    - ROCKSPEC=luacwrap-scm-1.rockspec
+  matrix:
+    - LUA="lua 5.1"
+    - LUA="lua 5.2"
+    - LUA="lua 5.3"
+    - LUA="luajit 2.0"
+    - LUA="luajit 2.1"
+
+branches:
+  only:
+    - master
+
+before_install:
+  - pip install --user hererocks
+  - hererocks env --$LUA -rlatest    # Use latest LuaRocks, install into 'env' directory.
+  - source env/bin/activate          # Add directory with all installed binaries to PATH.
+
+install:
+  - luarocks make $ROCKSPEC CFLAGS="-O2 -fPIC" LIBFLAG="-shared"
+
+script: 
+  - lua -e "print(require'path.info'.version)"
+  - cd src
+  - lua unittest.lua
+
+notifications:
+  email:
+    on_success: change
+    on_failure: always
