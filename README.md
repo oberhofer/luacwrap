@@ -1,3 +1,5 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/github/oberhofer/luacwrap?svg=true&branch=master)](https://ci.appveyor.com/project/oberhofer/luacwrap/branch/master)
+
 # Introduction
 
 LuaCwrap is a wrapper for C datatypes written in pure C. It utilizes metadata (aka type descriptors) to describe the layout and names of structures, unions, arrays and buffers.
