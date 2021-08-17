@@ -19,6 +19,7 @@ to describe the layout and names of structures, unions, arrays and buffers.</p>
 <p>LuaCwrap</p>
 
 <ul>
+    <li>supports Lua 5.1 to 5.4</li>
     <li>supports struct and union types</li>
     <li>supports array types</li>
     <li>supports fixed length buffers</li>
@@ -44,7 +45,7 @@ to describe the layout and names of structures, unions, arrays and buffers.</p>
 <h2>Windows</h2>
 
 <p>For a beginner I would recommend to install the latest "Lua for Windows" 
-setup from from http://luaforwindows.googlecode.com/ and install 
+setup from from https://github.com/rjpcomputing/luaforwindows/releases and install 
 LuaCWrap via LuaRocks.</p>
 
 <h1>Installation via Luarocks</h1>
@@ -315,7 +316,7 @@ rc.set{ top=10; left=10; bottom=100; right=100 }
 print(rc:width(), rc:height())
 </div>
 
-<h2>C-API</h2>
+<h2>C-API (V1)</h2>
 
 <p>Since version 1.1.0-1 the C interface is exported it via a C interface struct.
 This enables dependant C modules to load luacwrap dynamically via the Lua loader 
@@ -336,7 +337,7 @@ g_luacwrapiface = (luacwrap_cinterface*)lua_touserdata(L, -1);
 // check interface version
 if (LUACWARP_CINTERFACE_VERSION != g_luacwrapiface-&gt;version)
 {
-  luaL_error(L, "Could not load luacwrap. Incompatiple C interface version. Expected %i got %i.", LUACWARP_CINTERFACE_VERSION, g_luacwrapiface-&gt;version);
+  luaL_error(L, "Could not load luacwrap. Incompatible C interface version. Expected %d got %d.", LUACWARP_CINTERFACE_VERSION, g_luacwrapiface-&gt;version);
 }
 
 // drop package table
@@ -520,7 +521,51 @@ Example:</p>
 end
 </div>
 
-<h3></h3>
+<h2>C-API (additional in V2)</h2>
+
+<p>Since version 2.0.0-1 of luacwrap additional functions had been exposed through the C-API.
+These are used to access the environment of managed objects and access the object specific reference
+tables. Thesee functions are helpfull e.g. to specify your own pointer types.</p>
+
+<h3>Access managed object environment</h3>
+
+<p>Use setenvironment/getenvironment to access the object specific environment table.
+These environments also holds the object specific references (addressed by integer indices).
+Sample code:</p>
+
+<div class="code">// create environment if not already present
+if (!g_luacwrapiface-&gt;mobjgetenvironment(L, ud))
+{
+  lua_pop(L, 1);
+  lua_newtable(L);
+  lua_pushvalue(L, -1);
+  g_luacwrapiface-&gt;mobjsetenvironment(L, ud);
+}
+</div>
+
+<p>You can access references in the environment table via lua<em>rawseti/lua</em>rawgeti, but 
+there are more convenient methods for this:</p>
+
+<p>Use mobjgetreference/mobjsetreference to get/set a reference in the managed object environment table,
+mobjsetreference also takes care that the environment table exists.
+Most times mobjgetreference is used in the implementation of the get method of pointer types to check 
+if there is already a reference set for a specific pointer offset:</p>
+
+<div class="code">if (!g_luacwrapiface-&gt;mobjgetreference(L, 1, offset))
+{
+  // reference no found -&gt; you have handle this case
+  ...
+}
+else
+{
+  // reference found -&gt; reference is now on Lua stack
+  ...
+}
+</div>
+
+<p>The counterparts mobjsetreference/mobjremovereference are used to implement the set method of 
+pointer types to assign references or remove references if nil or 0 is assigned to a pointer type member.</p>
+
 
 <h1>Internals</h1>
 
@@ -581,7 +626,7 @@ If a buffer with the requested size is already registered, the existing one is r
 This means that LuaCwrap is free software and can be used for both academic
 and commercial purposes at absolutely no cost.</p>
 
-<p>Copyright (C) 2011-2017 Klaus Oberhofer</p>
+<p>Copyright (C) 2011-2021 Klaus Oberhofer</p>
 
 <p>Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

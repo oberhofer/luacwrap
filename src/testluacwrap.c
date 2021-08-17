@@ -373,7 +373,7 @@ int luaopen_testluacwrap(lua_State *L)
   // check interface version
   if (LUACWARP_CINTERFACE_VERSION != g_luacwrapiface->version)
   {
-    luaL_error(L, "Could not load luacwrap. Incompatiple C interface version. Expected %i got %i.", LUACWARP_CINTERFACE_VERSION, g_luacwrapiface->version);
+    luaL_error(L, "Could not load luacwrap. Incompatible C interface version. Expected %d got %d.", LUACWARP_CINTERFACE_VERSION, g_luacwrapiface->version);
   }
 
   // drop C interface and drop package table

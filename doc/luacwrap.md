@@ -348,7 +348,7 @@ C interface struct with the following code:
     // check interface version
     if (LUACWARP_CINTERFACE_VERSION != g_luacwrapiface->version)
     {
-      luaL_error(L, "Could not load luacwrap. Incompatiple C interface version. Expected %i got %i.", LUACWARP_CINTERFACE_VERSION, g_luacwrapiface->version);
+      luaL_error(L, "Could not load luacwrap. Incompatible C interface version. Expected %d got %d.", LUACWARP_CINTERFACE_VERSION, g_luacwrapiface->version);
     }
     
     // drop package table
