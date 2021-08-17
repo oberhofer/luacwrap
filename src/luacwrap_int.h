@@ -1,12 +1,30 @@
+//////////////////////////////////////////////////////////////////////////
+// LuaCwrap - lua <-> C 
+// Copyright (C) 2011-2021 Klaus Oberhofer. See Copyright Notice in luacwrap.h
+//
+//////////////////////////////////////////////////////////////////////////
+/**
 
+  C-API
+
+*/////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "luacwrap.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// convert a stack index to an absolute (positive) index
+#define abs_index(L, i)   ((i) > 0 || (i) <= LUA_REGISTRYINDEX ? (i) : \
+                          lua_gettop(L) + (i) + 1)
+
+// _M.$buftypes to store references
+extern const char* g_keyRefTable;
+
+
+//
+// access global module table
+//
+void getmoduletable(lua_State *L);
 
 //
 // used to register a basic type descriptor in the basic type table
@@ -43,10 +61,19 @@ int luacwrap_pushtypedptr       ( lua_State*            L
                                 , void*                 pObj);
 
 //
-// access to reference table
+// access to managed object reference table
+//
+int luacwrap_mobj_set_reference     (lua_State *L, int ud, int value, int offset);
+int luacwrap_mobj_get_reference     (lua_State *L, int ud, int offset);
+int luacwrap_mobj_remove_reference  (lua_State *L, int ud, int offset);
+int luacwrap_mobj_copy_references   (lua_State* L, int destoffset, int srcoffset, size_t  size);
+
+//
+// access to global reference table
 //
 int luacwrap_createreference    (lua_State* L, int index);
 int luacwrap_pushreference      (lua_State* L, int tag);
+int luacwrap_release_reference  (lua_State *L);
 
 //
 //  Registers a list of global constants maintained in an array or
@@ -56,6 +83,3 @@ void luacwrap_defuintconstants  ( lua_State*              L
                                 , luacwrap_DefUIntConst*  constants);
 
 
-#ifdef __cplusplus
-}
-#endif

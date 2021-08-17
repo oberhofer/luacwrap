@@ -32,10 +32,6 @@ const char* g_keyStringTable  = "stringtable";
 const char* g_keyBufTypes     = "buftypes";
 
 
-// convert a stack index to an absolute (positive) index
-#define abs_index(L, i)   ((i) > 0 || (i) <= LUA_REGISTRYINDEX ? (i) : \
-                          lua_gettop(L) + (i) + 1)
-
 // forward declarations
 static int getEmbedded(lua_State* L, int ud, int offset, const char* typname);
 static int setEmbedded(lua_State* L, int offset, const char* typname);
@@ -61,7 +57,7 @@ const char* g_keyGetOuter = "getouter";
   get module table from registry
 
 *////////////////////////////////////////////////////////////////////////
-static void getmoduletable(lua_State *L)
+void getmoduletable(lua_State *L)
 {
   lua_pushlightuserdata(L, (void*)&g_keyLibraryTable);
   lua_rawget(L, LUA_REGISTRYINDEX);
@@ -148,7 +144,7 @@ int luacwrap_setenvironment(lua_State *L, int ud)
   The offset of the pointer is used as index in the reference table.
 
 *////////////////////////////////////////////////////////////////////////
-int luacwrap_type_get_reference(lua_State *L, int ud, int offset)
+int luacwrap_mobj_get_reference(lua_State *L, int ud, int offset)
 {
   LUASTACK_SET(L);
 
@@ -186,7 +182,7 @@ int luacwrap_type_get_reference(lua_State *L, int ud, int offset)
   The offset of the pointer is used as index in the reference table.
 
 *////////////////////////////////////////////////////////////////////////
-int luacwrap_type_set_reference(lua_State *L, int ud, int value, int offset)
+int luacwrap_mobj_set_reference(lua_State *L, int ud, int value, int offset)
 {
   LUASTACK_SET(L);
 
@@ -218,7 +214,7 @@ int luacwrap_type_set_reference(lua_State *L, int ud, int value, int offset)
   pointer referenced value.
 
 *////////////////////////////////////////////////////////////////////////
-int luacwrap_type_remove_reference(lua_State *L, int ud, int offset)
+int luacwrap_mobj_remove_reference(lua_State *L, int ud, int offset)
 {
   LUASTACK_SET(L);
   
@@ -243,7 +239,7 @@ int luacwrap_type_remove_reference(lua_State *L, int ud, int offset)
   copy reference table from source object to destination object
 
 *////////////////////////////////////////////////////////////////////////
-static int luacwrap_type_copy_references(lua_State* L
+int luacwrap_mobj_copy_references(lua_State* L
     , int     destoffset
     , int     srcoffset
     , size_t  size)
@@ -1800,7 +1796,7 @@ static int luacwrap_type_set(lua_State* L)
             , size);
 
       // copy object references
-      luacwrap_type_copy_references(L, destoffset, srcoffset, size);
+      luacwrap_mobj_copy_references(L, destoffset, srcoffset, size);
 
       // pop the outer objects
       lua_pop(L, 2);
@@ -2122,12 +2118,12 @@ static int luacwrap_pointer_set(luacwrap_BasicType* self, lua_State *L, PBYTE pD
         if (*v)
         {
           // store reference in outer value
-          luacwrap_type_set_reference(L, 1, abs_index(L, -1), offset);
+          luacwrap_mobj_set_reference(L, 1, abs_index(L, -1), offset);
         }
         else
         {
           // remove a possible reference value (from a previously assigned value)
-          luacwrap_type_remove_reference(L, 1, offset);
+          luacwrap_mobj_remove_reference(L, 1, offset);
         }
       }
       break;
@@ -2136,7 +2132,7 @@ static int luacwrap_pointer_set(luacwrap_BasicType* self, lua_State *L, PBYTE pD
         *v = (PBYTE)lua_tostring(L, -1);
 
         // store reference in outer value
-        luacwrap_type_set_reference(L, 1, abs_index(L, -1), offset);
+        luacwrap_mobj_set_reference(L, 1, abs_index(L, -1), offset);
       }
       break;
     case LUA_TNUMBER:
@@ -2145,7 +2141,7 @@ static int luacwrap_pointer_set(luacwrap_BasicType* self, lua_State *L, PBYTE pD
         *v = (PBYTE)lua_tointeger(L, -1);
         
         // remove a possible reference value (from a previously assigned value)
-        luacwrap_type_remove_reference(L, 1, offset);
+        luacwrap_mobj_remove_reference(L, 1, offset);
       }
       break;
     default:
@@ -2169,7 +2165,7 @@ static int luacwrap_pointer_set(luacwrap_BasicType* self, lua_State *L, PBYTE pD
 static int luacwrap_pointer_get(luacwrap_BasicType* self, lua_State *L, PBYTE pData, int offset)
 {
   // try to get referenced lua value from outer struct
-  if (!luacwrap_type_get_reference(L, 1, offset))
+  if (!luacwrap_mobj_get_reference(L, 1, offset))
   {
     // otherwise return raw pointer as light userdata
     PBYTE* v = (PBYTE*)pData;
