@@ -1,0 +1,20 @@
+//////////////////////////////////////////////////////////////////////////
+// LuaCwrap - lua <-> C 
+// Copyright (C) 2011-2021 Klaus Oberhofer. See Copyright Notice in luacwrap.h
+//
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  Wraps pointer members within 
+  wrapped structs and implements set/get methods for them
+
+*/////////////////////////////////////////////////////////////////////////
+
+#pragma once
+
+#include "luacwrap_int.h"
+
+
+extern luaL_Reg g_mtReferences[];
+
+extern luacwrap_BasicType regType_Reference;
