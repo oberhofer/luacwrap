@@ -2386,7 +2386,17 @@ static luacwrap_cinterface g_cinterface =
   luacwrap_pushboxedobj,
   luacwrap_createreference,
   luacwrap_pushreference,
-  luacwrap_defuintconstants
+  luacwrap_defuintconstants,
+
+  // v2
+  luacwrap_getdescriptor,
+  luacwrap_getdescriptor_byname,
+
+  luacwrap_setenvironment,
+  luacwrap_getenvironment,
+  luacwrap_mobj_get_reference,
+  luacwrap_mobj_set_reference,
+  luacwrap_mobj_remove_reference
 };
   
 //////////////////////////////////////////////////////////////////////////
@@ -2525,7 +2535,7 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
     lua_pushstring(L, "Klaus Oberhofer");
     lua_setfield(L, -2, "_AUTHOR");
 
-    lua_pushstring(L, "1.3.1-1");
+    lua_pushstring(L, "2.0.0-1");
     lua_setfield(L, -2, "_VERSION");
 
     lua_pushstring(L, "MIT license: See LICENSE for details.");

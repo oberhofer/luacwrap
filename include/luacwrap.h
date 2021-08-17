@@ -356,8 +356,23 @@ typedef int (*luacwrap_pushreference_t      )(lua_State* L, int tag);
 typedef void (*luacwrap_defuintconstants_t  )( lua_State*              L
                                              , luacwrap_DefUIntConst*  constants);
 
+//
+// access to type descriptor
+//
+typedef luacwrap_Type* (*luacwrap_getdescriptor_t         )(lua_State* L, int ud);
+typedef luacwrap_Type* (*luacwrap_getdescriptor_byname_t  )(lua_State* L, const char* name, int namelen);
 
-#define LUACWARP_CINTERFACE_VERSION  1
+//
+// access to managed object environment table
+//
+typedef int (*luacwrap_mobj_setenvironment_t    )(lua_State *L, int ud);
+typedef int (*luacwrap_mobj_getenvironment_t    )(lua_State *L, int ud);
+typedef int (*luacwrap_mobj_get_reference_t     )(lua_State *L, int ud, int offset);
+typedef int (*luacwrap_mobj_set_reference_t     )(lua_State *L, int ud, int value, int offset);
+typedef int (*luacwrap_mobj_remove_reference_t  )(lua_State *L, int ud, int offset);
+
+
+#define LUACWARP_CINTERFACE_VERSION  2
 
 #define LUACWARP_CINTERFACE_NAME     "c_interface"
 
@@ -372,5 +387,27 @@ typedef struct
   luacwrap_createreference_t    createreference;
   luacwrap_pushreference_t      pushreference;
   luacwrap_defuintconstants_t   defuintconstants;
+} luacwrap_cinterface_v1;
+
+typedef struct
+{
+  int version;
+  luacwrap_registerbasictype_t      registerbasictype;
+  luacwrap_registertype_t           registertype;
+  luacwrap_checktype_t              checktype;
+  luacwrap_pushtypedptr_t           pushtypedptr;
+  luacwrap_pushboxedobj_t           pushboxedobj;
+  luacwrap_createreference_t        createreference;
+  luacwrap_pushreference_t          pushreference;
+  luacwrap_defuintconstants_t       defuintconstants;
+  // v2
+  luacwrap_getdescriptor_t          getdescriptor;
+  luacwrap_getdescriptor_byname_t   getdescriptorbyname;
+
+  luacwrap_mobj_setenvironment_t    mobjsetenvironment;
+  luacwrap_mobj_getenvironment_t    mobjgetenvironment;
+  luacwrap_mobj_get_reference_t     mobjgetreference;
+  luacwrap_mobj_set_reference_t     mobjsetreference;
+  luacwrap_mobj_remove_reference_t  mobjremovereference;
 } luacwrap_cinterface;
 
