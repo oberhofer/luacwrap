@@ -320,10 +320,7 @@ int checkInnerStructAccess(lua_State* L)
 
   outer = (TESTSTRUCT*)g_luacwrapiface->checktype(L, 1, &regType_TESTSTRUCT.hdr);
   inner = (INNERSTRUCT*)g_luacwrapiface->checktype(L, 2, &regType_INNERSTRUCT.hdr);
-    
-  printf("outer %p\n", outer);
-  printf("inner %p\n", inner);
-    
+
   // check if inner points inside outer
   if ((&outer->inner) == inner)
   {
