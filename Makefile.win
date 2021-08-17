@@ -1,22 +1,25 @@
-LUA_INCDIR=c:\Lua\5.1\Include
-LIB_OPTION=c:\Lua\5.1\lib\lua51.lib
+LUA_DIR=c:\Lua\5.1
+LUA_INCDIR=$(LUA_DIR)\Include
+LUA_LIB=$(LUA_DIR)\lib\lua51.lib
 
 {src}.c{src}.obj:
-	cl /c /MD /Fo$@ $(CFLAGS) -I$(LUA_INCDIR) -I.\src $<
+	cl /c /MD /Fo$@ $(CFLAGS) -I$(LUA_INCDIR) -I.\src -I.\include $<
 
 all: bin\luacwrap.dll bin\testluacwrap.dll lib\luacwrap.lib
 	IF EXIST bin\luacwrap.dll.manifest del bin\luacwrap.dll.manifest
 	IF EXIST bin\testluacwrap.dll.manifest del bin\testluacwrap.dll.manifest
 
-bin\luacwrap.dll lib\luacwrap.lib: src\luaaux.obj src\luacwrap.obj src\wrapnumeric.obj src\defconstants.obj
+LUACWRAP_OBJS=src\luaaux.obj src\luacwrap.obj src\wrapnumeric.obj src\wrappointer.obj src\wrapreference.obj src\defconstants.obj
+
+bin\luacwrap.dll lib\luacwrap.lib: $(LUACWRAP_OBJS)
 	IF NOT EXIST bin mkdir bin
 	IF NOT EXIST lib mkdir lib
-	link /dll /out:bin\luacwrap.dll /def:src\luacwrap.def /implib:lib\luacwrap.lib src\luaaux.obj src\luacwrap.obj src\wrapnumeric.obj src\defconstants.obj $(LIB_OPTION)
+	link /dll /out:bin\luacwrap.dll /def:src\luacwrap.def /implib:lib\luacwrap.lib $** $(LUA_LIB)
 	IF EXIST bin\luacwrap.dll.manifest mt -manifest bin\luacwrap.dll.manifest -outputresource:bin\luacwrap.dll;2
 
 bin\testluacwrap.dll: src\testluacwrap.obj src\luaaux.obj lib\luacwrap.lib
 	IF NOT EXIST bin mkdir bin
-	link /dll /out:bin\testluacwrap.dll /def:src\testluacwrap.def lib\luacwrap.lib src\testluacwrap.obj src\luaaux.obj $(LIB_OPTION)
+	link /dll /out:bin\testluacwrap.dll /def:src\testluacwrap.def lib\luacwrap.lib src\testluacwrap.obj src\luaaux.obj $(LUA_LIB)
 	IF EXIST bin\testluacwrap.dll.manifest mt -manifest bin\testluacwrap.dll.manifest -outputresource:bin\testluacwrap.dll;2
 
 install:
@@ -26,4 +29,4 @@ clean:
 	del bin\*.dll src\*.obj src\*.exp src\*.lib src\*.dll.manifest
 
 test:
-	cd src && lua unittest.lua
+	cd bin && $(LUA_DIR)\lua.exe ..\src\unittest.lua && cd ..
