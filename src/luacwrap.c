@@ -799,16 +799,20 @@ static int luacwrap_getmethodtable_byname(lua_State* L, const char* name)
     - then tries a lookup in _G
 
 *////////////////////////////////////////////////////////////////////////
-static luacwrap_Type* luacwrap_getdescriptor_byname(lua_State* L, const char* name)
+static luacwrap_Type* luacwrap_getdescriptor_byname(lua_State* L, const char* name, int namelen)
 {
   luacwrap_Type* result = NULL;
 
   LUASTACK_SET(L);
 
+  if (-1 == namelen)
+    namelen = strlen(name);
+
   // get access to _M[elemtype]
   getmoduletable(L);
   lua_getfield(L, -1, "types");
-  lua_getfield(L, -1, name);
+  lua_pushlstring(L, name, namelen);
+  lua_rawget(L, -2);
   if (lua_isnil(L, -1))
   {
     // not found
@@ -1078,7 +1082,7 @@ static int getEmbedded(lua_State* L, int ud, int offset, const char* typname)
   LUASTACK_SET(L);
 
   // get descriptor from type name
-  desc = luacwrap_getdescriptor_byname(L, typname);
+  desc = luacwrap_getdescriptor_byname(L, typname, -1);
   switch (desc->typeclass)
   {
     case LUACWRAP_TC_BASIC:
@@ -1140,7 +1144,7 @@ static int setEmbedded(lua_State* L, int offset, const char* typname)
   LUASTACK_SET(L);
 
   // get descriptor from string
-  desc = luacwrap_getdescriptor_byname(L, typname);
+  desc = luacwrap_getdescriptor_byname(L, typname, -1);
   switch (desc->typeclass)
   {
     case LUACWRAP_TC_BASIC:
@@ -2591,7 +2595,7 @@ static int luacwrap_registerarray( lua_State*       L)
     luaL_error(L, "non empty string expected on parameter #3");
   }
 
-  elemtype = luacwrap_getdescriptor_byname(L, elemtypename);
+  elemtype = luacwrap_getdescriptor_byname(L, elemtypename, -1);
   if (!elemtype)
   {
     luaL_error(L, "specified unknown type <%s> in parameter #3", elemtypename);
