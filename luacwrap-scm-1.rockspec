@@ -41,23 +41,17 @@ local function make_plat(plat)
     linux = {
     }
   }
-  local build_variables = {
-    linux = {
-        LIB_OPTION = "-shared",
-        CFLAGS = '$(CFLAGS) -I$(LUA_INCDIR) -DLINUX',
-        LIB_EXT = '.so'
-    }
-  }
 
   local modules = {
     ["luacwrap"] = {
       sources = { "src/luaaux.c",
                   "src/luacwrap.c",
                   "src/wrapnumeric.c",
+                  "src/wrappointer.c",
+                  "src/wrapreference.c",
                   "src/defconstants.c",
                 },
       defines = defines[plat],
-      build_variables = build_variables[plat] or {},
       incdirs = {"./include" }
     },
     -- not necessary for releases
@@ -65,7 +59,6 @@ local function make_plat(plat)
       sources = { "src/testluacwrap.c"
                 },
       defines = defines[plat],
-      build_variables = build_variables[plat] or {},
       incdirs = {"./include" }
     }
   }
