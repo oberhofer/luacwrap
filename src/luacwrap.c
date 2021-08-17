@@ -51,6 +51,9 @@ static int* luacwrap_toreference(lua_State* L, int index);
 // and the offset within the outer object
 typedef int (*GET_OBJECTOUTER)(lua_State* L, int ud, int* offset);
 
+// key under which the getouter function is stored
+const char* g_keyGetOuter = "getouter";
+
 
 //////////////////////////////////////////////////////////////////////////
 /**
@@ -1480,7 +1483,7 @@ static int luacwrap_type_dup(lua_State* L)
 *////////////////////////////////////////////////////////////////////////
 static int luacwrap_getouter(lua_State* L, int ud, int* offset)
 {
-  if (luaL_getmetafield(L, ud, "getouter"))
+  if (luaL_getmetafield(L, ud, g_keyGetOuter))
   {
     GET_OBJECTOUTER getouter = (GET_OBJECTOUTER)lua_touserdata(L, -1);
     lua_pop(L, 1);
@@ -2795,7 +2798,7 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
 
     // register getouter in metatable
     lua_pushlightuserdata(L, Boxed_getouter);
-    lua_setfield(L, -2, "getouter");
+    lua_setfield(L, -2, g_keyGetOuter);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     // create metatable for embedded objects and store it in registry
@@ -2809,7 +2812,7 @@ LUACWRAP_API int luaopen_luacwrap(lua_State *L)
 
     // register getouter in metatable
     lua_pushlightuserdata(L, Embedded_getouter);
-    lua_setfield(L, -2, "getouter");
+    lua_setfield(L, -2, g_keyGetOuter);
     lua_rawset(L, LUA_REGISTRYINDEX);
 
     // create metatable for type wrappers and store it in registry
