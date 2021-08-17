@@ -118,20 +118,22 @@ int luacwrap_getenvironment(lua_State *L, int ud)
   Set environment of managed object or throw error
 
 *////////////////////////////////////////////////////////////////////////
-void luacwrap_setenvironment(lua_State *L, int ud)
+int luacwrap_setenvironment(lua_State *L, int ud)
 {
 #if (LUA_VERSION_NUM > 501)
   if (LUA_TUSERDATA == lua_type(L, ud))
   {
     lua_setuservalue(L, ud);
+    return 1;
   }
   else
   {
     const char *msg = lua_pushfstring(L, "luacwrap: try to set environment for parameter of type <%s>", luaL_typename(L, ud));
     luaL_argerror(L, ud, msg);
+    return 0;
   }
 #else
-  lua_setfenv(L, ud);
+  return lua_setfenv(L, ud);
 #endif
 }
 
