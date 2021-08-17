@@ -9,6 +9,7 @@ to describe the layout and names of structures, unions, arrays and buffers.
 
 LuaCwrap
 
+ * supports Lua 5.1 to 5.4
  * supports struct and union types
  * supports array types
  * supports fixed length buffers
@@ -32,7 +33,7 @@ Install the following packages
 ## Windows
 
 For a beginner I would recommend to install the latest "Lua for Windows" 
-setup from from http://luaforwindows.googlecode.com/ and install 
+setup from from https://github.com/rjpcomputing/luaforwindows/releases and install 
 LuaCWrap via LuaRocks.
 
 # Installation via Luarocks
@@ -326,7 +327,7 @@ After that you can use these methods as follows:
     rc.set{ top=10; left=10; bottom=100; right=100 }
     print(rc:width(), rc:height())
  
-## C-API
+## C-API (V1)
 
 Since version 1.1.0-1 the C interface is exported it via a C interface struct.
 This enables dependant C modules to load luacwrap dynamically via the Lua loader 
@@ -516,7 +517,49 @@ Example:
       end
     end
 
-###
+## C-API (additional in V2)
+
+Since version 2.0.0-1 of luacwrap additional functions had been exposed through the C-API.
+These are used to access the environment of managed objects and access the object specific reference
+tables. Thesee functions are helpfull e.g. to specify your own pointer types.
+
+### Access managed object environment
+
+Use setenvironment/getenvironment to access the object specific environment table.
+These environments also holds the object specific references (addressed by integer indices).
+Sample code:
+
+    // create environment if not already present
+    if (!g_luacwrapiface->mobjgetenvironment(L, ud))
+    {
+      lua_pop(L, 1);
+      lua_newtable(L);
+      lua_pushvalue(L, -1);
+      g_luacwrapiface->mobjsetenvironment(L, ud);
+    }
+
+You can access references in the environment table via lua_rawseti/lua_rawgeti, but 
+there are more convenient methods for this:
+  
+Use mobjgetreference/mobjsetreference to get/set a reference in the managed object environment table,
+mobjsetreference also takes care that the environment table exists.
+Most times mobjgetreference is used in the implementation of the get method of pointer types to check 
+if there is already a reference set for a specific pointer offset:
+
+    if (!g_luacwrapiface->mobjgetreference(L, 1, offset))
+    {
+      // reference no found -> you have handle this case
+      ...
+    }
+    else
+    {
+      // reference found -> reference is now on Lua stack
+      ...
+    }
+    
+The counterparts mobjsetreference/mobjremovereference are used to implement the set method of 
+pointer types to assign references or remove references if nil or 0 is assigned to a pointer type member.
+
 
 # Internals
 
@@ -571,7 +614,7 @@ LuaCwrap is licensed under the terms of the MIT license reproduced below.
 This means that LuaCwrap is free software and can be used for both academic
 and commercial purposes at absolutely no cost.
 
-Copyright (C) 2011-2017 Klaus Oberhofer
+Copyright (C) 2011-2021 Klaus Oberhofer
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
