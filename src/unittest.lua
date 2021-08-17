@@ -18,8 +18,8 @@ TestTESTSTRUCT = {}
 
         -- semantic of attach()"
         local attached = TESTSTRUCT:attach(struct)
-        assertEquals(attached, struct)
-        assertEquals(struct.__ptr, attached.__ptr)
+        lu.assertEquals(attached, struct)
+        lu.assertEquals(struct.__ptr, attached.__ptr)
         
         -- check metatable
         assert(nil ~= getmetatable(struct))
@@ -206,9 +206,9 @@ TestTESTSTRUCT = {}
     function TestTESTSTRUCT:testSizes()
 
         local struct = TESTSTRUCT:new()
-    
+
         -- check sizes
-        assert(#struct == 76)             -- depends on packing
+        assert(#struct == 88)             -- depends on packing
         
         assert(#struct.intarray == 4)
         assert(#struct.chararray == 32)
