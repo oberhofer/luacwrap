@@ -67,3 +67,14 @@
 * fixed implementation of parts of the Lua interface (createbuffer, 
   registerarray and registerstruct function)
 * better documentation for the Lua API
+
+2.0.0-1
+
+* implement C interface version 2 which exposes access to more internals
+  like access to type descriptors, managed object environment and managed object references
+* split implementation into more files, move wrapped type functions out of luacwrap.c
+* rename luacwrap_type_ functions to luacwrap_mobj_ (mobj = managed objects)
+* change signature of luacwrap_getdescriptor_byname, add namelen parameter
+* change signature of luacwrap_setenvironment() to return result code
+* testluacwrap: remove debug output
+* use luaunit as unit test framework
