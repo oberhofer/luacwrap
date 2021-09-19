@@ -78,3 +78,13 @@
 * change signature of luacwrap_setenvironment() to return result code
 * testluacwrap: remove debug output
 * use luaunit as unit test framework
+* adjust Makefile.win due to added source files
+* fix typo and update html documentation
+* rockspec: removed unused build_variables for builtin target
+* adjust makefile to changed project structure
+* update license info in file headers
+* add .gitignore file
+* extend V2 C interface by luacwrap_mobj_copy_references_t function ptr
+* fix LUACWRAP_DEFINEARRAY macro
+* array and struct type descriptors: cache type descriptors of membertypes
+* handle UCS2 encoded arrays on windows (with automatic conversion to/from utf8 encoded strings)
