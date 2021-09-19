@@ -152,9 +152,10 @@ struct luacwrap_BasicType
 struct luacwrap_ArrayType
 {
   struct luacwrap_Type      hdr;
-  unsigned int              elemcount;  // size of array 
-  unsigned int              elemsize;   // size of one element
-  const char*               elemtype;   // valid only for arrays
+  unsigned int              elemcount;      // size of array 
+  unsigned int              elemsize;       // size of one element
+  const char*               elemtypename;   // elemnt type name
+  struct luacwrap_Type*     elemtypedesc;   // caches type descriptor 
 };
 
 //
@@ -163,9 +164,10 @@ struct luacwrap_ArrayType
 //
 struct luacwrap_RecordMember
 {
-  const char*               name;       // name to access
-  unsigned int              offset;     // offset within struct
-  const char*               typname;    // member type name
+  const char*               membername;     // name to access
+  unsigned int              memberoffset;   // offset within struct
+  const char*               membertypename; // member type name
+  struct luacwrap_Type*     membertypedesc; // caches cache type descriptor 
 };
 
 //
@@ -243,9 +245,9 @@ luacwrap_ArrayType regType_##elemtype##_##nelems =      \
     LUACWRAP_TC_ARRAY,                                  \
     #elemtype"_"#nelems                                 \
   },                                                    \
-  sizeof(elemtype),                                     \
   nelems,                                               \
-  #elemtype                                             \
+  sizeof(elemtype),                                     \
+  "$" #elemtype                                         \
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -372,6 +374,7 @@ typedef int (*luacwrap_mobj_getenvironment_t    )(lua_State *L, int ud);
 typedef int (*luacwrap_mobj_get_reference_t     )(lua_State *L, int ud, int offset);
 typedef int (*luacwrap_mobj_set_reference_t     )(lua_State *L, int ud, int value, int offset);
 typedef int (*luacwrap_mobj_remove_reference_t  )(lua_State *L, int ud, int offset);
+typedef int (*luacwrap_mobj_copy_references_t   )(lua_State* L);
 
 
 #define LUACWARP_CINTERFACE_VERSION  2
@@ -408,8 +411,10 @@ typedef struct
 
   luacwrap_mobj_setenvironment_t    mobjsetenvironment;
   luacwrap_mobj_getenvironment_t    mobjgetenvironment;
+
   luacwrap_mobj_get_reference_t     mobjgetreference;
   luacwrap_mobj_set_reference_t     mobjsetreference;
   luacwrap_mobj_remove_reference_t  mobjremovereference;
+  luacwrap_mobj_copy_references_t   mobjcopyreferences;
 } luacwrap_cinterface;
 

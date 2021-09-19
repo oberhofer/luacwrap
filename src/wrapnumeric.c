@@ -14,6 +14,8 @@
 #include "luaaux.h"
 #include "wrapnumeric.h"
 
+#include "stdint.h"
+
 #define WRAPPER(PREFIX, TYPE, NAME)                                                           \
                                                                                               \
 static int PREFIX ## Wrapper_set(luacwrap_BasicType* self, lua_State *L, PBYTE pData, int offset)   \
@@ -50,6 +52,9 @@ WRAPPER(UINT16, UINT16, "$u16")
 WRAPPER(INT32,  INT32,  "$i32")
 WRAPPER(UINT32, UINT32, "$u32")
 
+WRAPPER(int64_t,  int64_t,  "$i64")
+WRAPPER(uint64_t, uint64_t, "$u64")
+
 // platform dependant types
 WRAPPER(INT,    int,            "$int")
 WRAPPER(UINT,   unsigned int,   "$uint")
@@ -60,6 +65,11 @@ WRAPPER(ULONG,  unsigned long,  "$ulong")
 WRAPPER(FLOAT,  float,  "$flt")
 WRAPPER(DOUBLE, double, "$dbl")
 
+// char type
+WRAPPER(char, char, "$char")
+
+// wchar type
+WRAPPER(WCHAR, wchar_t, "$wchar_t")
 
 //////////////////////////////////////////////////////////////////////////
 /**
@@ -87,7 +97,16 @@ int luacwrap_registerNumericTypes(lua_State* L)
   // floating point types
   luacwrap_registerbasictype(L, &regType_FLOAT);
   luacwrap_registerbasictype(L, &regType_DOUBLE);
-  
+
+  // wchar type
+  luacwrap_registerbasictype(L, &regType_WCHAR);
+
+  // char type
+  luacwrap_registerbasictype(L, &regType_char);
+
+  // aliases
+  // luacwrap_registeralias(L, "wchar_t", "$wchar");
+
   LUASTACK_CLEAN(L, 0);
   return 0;
 }

@@ -40,6 +40,7 @@ typedef struct
   int      ref;
   char     chararray[32];
   UINT32   intarray[4];
+  wchar_t  wchararray[32];
   INNERSTRUCT inner;
 } TESTSTRUCT;
 
@@ -50,14 +51,8 @@ typedef struct
 
 */////////////////////////////////////////////////////////////////////////
 
-luacwrap_BasicType regType_Buf32 =
-{
-  {
-    LUACWRAP_TC_BUFFER,
-    "$buf32"
-  },
-  32
-};
+LUACWRAP_DEFINEARRAY(char, 32)
+LUACWRAP_DEFINEARRAY(wchar_t, 32)
 
 // member descriptor for INNERSTRUCT
 static luacwrap_RecordMember s_memberINNERSTRUCT[] =
@@ -81,8 +76,9 @@ static luacwrap_RecordMember s_memberTESTSTRUCT[] =
   { "i32",  offsetof(TESTSTRUCT, i32),  "$i32"  },
   { "ptr",  offsetof(TESTSTRUCT, ptr),  "$ptr"  },
   { "ref",  offsetof(TESTSTRUCT, ref),  "$ref"  },
-  { "chararray",  offsetof(TESTSTRUCT, chararray),  "$buf32" },
+  { "chararray",  offsetof(TESTSTRUCT, chararray),  "char_32" },
   { "intarray",  offsetof(TESTSTRUCT, intarray),  "INT32_4"  },
+  { "wchararray",  offsetof(TESTSTRUCT, wchararray),  "wchar_t_32" },
   { "inner",  offsetof(TESTSTRUCT, inner),  "INNERSTRUCT"    },
   { NULL, 0 }
 };
@@ -126,7 +122,7 @@ int printTESTSTRUCT(lua_State* L)
 
   ud = (TESTSTRUCT*)g_luacwrapiface->checktype(L, 1, &regType_TESTSTRUCT.hdr);
   
-  sprintf(szTemp, "TESTSTRUCT %p\n{\nu8:%u,\ni8:%i,\nu16:%u,\ni16:%i,\nu32:%u,\ni32:%i,\nptr:%p (%s),\nref:%i,\ninner.pszText:%p (%s)\n}\n", 
+  sprintf(szTemp, "TESTSTRUCT %p\n{\nu8:%u,\ni8:%i,\nu16:%u,\ni16:%i,\nu32:%u,\ni32:%i,\nptr:%p (%s),\nchararray:%32s,\nwchararray:%32ls,\nref:%i,\ninner.pszText:%p (%s)\n}\n", 
     ud,
     ud->u8,
     ud->i8,
@@ -136,10 +132,12 @@ int printTESTSTRUCT(lua_State* L)
     ud->i32,
     ud->ptr,
     "",
+    ud->chararray,
+    ud->wchararray,
     ud->ref, 
     ud->inner.pszText,
     ud->inner.pszText ? ud->inner.pszText : ""
- );
+  );
 
   lua_pushstring(L, szTemp);
 
@@ -389,13 +387,15 @@ int luaopen_testluacwrap(lua_State *L)
 #endif
 
   // register types
-  g_luacwrapiface->registerbasictype(L, &regType_Buf32);
 
 #if (LUA_VERSION_NUM > 501)
   lua_pushglobaltable(L);
 #else
   lua_pushvalue(L, LUA_GLOBALSINDEX);
 #endif
+  g_luacwrapiface->registertype(L, -1, &regType_char_32.hdr);
+  g_luacwrapiface->registertype(L, -1, &regType_wchar_t_32.hdr);
+
   g_luacwrapiface->registertype(L, -1, &regType_INNERSTRUCT.hdr);
   g_luacwrapiface->registertype(L, -1, &regType_INT32_4.hdr);
   g_luacwrapiface->registertype(L, -1, &regType_TESTSTRUCT.hdr);

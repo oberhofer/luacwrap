@@ -10,6 +10,10 @@
 
 */////////////////////////////////////////////////////////////////////////
 
+#ifdef _WINDOWS
+#include <windows.h>
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -21,6 +25,11 @@
 
 // enable this to add reserved __ptr attribute for debugging
 #define LUACWRAP_DEBUG_PTR
+
+// define min if not defined via windef.h
+#ifndef min
+#define min(a,b)	(((a) < (b)) ? (a) : (b))
+#endif
 
 // address of this string is used as key to register module table _M
 const char* g_keyLibraryTable = "luacwrap";
@@ -36,13 +45,19 @@ const char* g_keyBufTypes     = "buftypes";
 
 
 // forward declarations
-static int getEmbedded(lua_State* L, int ud, int offset, const char* typname);
-static int setEmbedded(lua_State* L, int offset, const char* typname);
+static int getEmbedded(lua_State* L, int ud, int offset, luacwrap_Type* desc);
+static int setEmbedded(lua_State* L, int offset, luacwrap_Type* desc);
 static int pushEmbedded(lua_State* L, int ud, int offset, luacwrap_Type* desc);
 
 static int luacwrap_type_set(lua_State* L);
 static int luacwrap_type_dup(lua_State* L);
+
+static int luacwrap_type_size(luacwrap_Type* desc);
+
 static int luacwrap_getouter(lua_State* L, int ud, int* offset);
+
+static luacwrap_Type* luacwrap_getdescriptor(lua_State* L, int ud);
+static luacwrap_Type* luacwrap_getdescriptor_byname(lua_State* L, const char* name, int namelen);
 
 // function prototype for getting the outer object
 // and the offset within the outer object
@@ -51,6 +66,51 @@ typedef int (*GET_OBJECTOUTER)(lua_State* L, int ud, int* offset);
 // key under which the getouter function is stored
 const char* g_keyGetOuter = "getouter";
 
+#ifdef _WINDOWS
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  convert UTF-8 encoded string to UCS2 encoded string
+
+*/////////////////////////////////////////////////////////////////////////
+LPCWSTR lua_widestringfromutf8(lua_State* L, int idx, size_t* destlen)
+{
+  size_t sourcelen = 0;
+  LPCSTR source = luaL_checklstring(L, idx, &sourcelen);
+
+  // convert UTF-8 text to UTF-16
+  int destsize = MultiByteToWideChar(CP_UTF8, 0, source, sourcelen, 0, 0);
+  LPWSTR dest = _alloca(destsize * sizeof(WCHAR));
+  MultiByteToWideChar(CP_UTF8, 0, source, sourcelen, dest, destsize);
+
+  lua_pushlstring(L, (const char*)dest, destsize * sizeof(WCHAR));
+
+  if (destlen)
+  {
+    *destlen = destsize;
+  }
+
+  return (LPCWSTR)(lua_tostring(L, -1));
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
+  convert UCS2 encoded string to UTF-8 encoded string
+
+*/////////////////////////////////////////////////////////////////////////
+LPCSTR lua_utf8fromwidestring(lua_State* L, LPCWSTR source, size_t sourcelen)
+{
+  // convert UCS2 text to UTF-8
+  int destsize = WideCharToMultiByte(CP_UTF8, 0, source, sourcelen, 0, 0, NULL, NULL);
+  LPSTR dest = _alloca(destsize * sizeof(CHAR));
+  WideCharToMultiByte(CP_UTF8, 0, source, sourcelen, dest, destsize, NULL, NULL);
+
+  lua_pushlstring(L, dest, destsize);
+
+  return (LPCSTR)(lua_tostring(L, -1));
+}
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 /**
@@ -78,9 +138,9 @@ void getmoduletable(lua_State *L)
 static luacwrap_RecordMember* findMember(luacwrap_RecordMember* members, const char* name)
 {
   luacwrap_RecordMember* result = members;
-  while (result->name)
+  while (result->membername)
   {
-    if (0 == strcmp(result->name, name))
+    if (0 == strcmp(result->membername, name))
     {
       return result;
     }
@@ -240,12 +300,17 @@ int luacwrap_mobj_remove_reference(lua_State *L, int ud, int offset)
   copy reference table from source object to destination object
 
 *////////////////////////////////////////////////////////////////////////
-int luacwrap_mobj_copy_references(lua_State* L
-    , int     destoffset
-    , int     srcoffset
-    , size_t  size)
+int luacwrap_mobj_copy_references(lua_State* L)
 {
   LUASTACK_SET(L);
+
+  luacwrap_Type* srcdesc = luacwrap_getdescriptor(L, -1);
+  if (NULL == srcdesc)
+  {
+    // todo: 
+  }
+
+  int srcsize = luacwrap_type_size(srcdesc);
 
   // get environment from (outer) source
   if (luacwrap_getenvironment(L, -1))
@@ -268,11 +333,12 @@ int luacwrap_mobj_copy_references(lua_State* L
       {
         // check if index is within range of source object
         lua_Number v = lua_tonumber(L, -2);
-        v -= srcoffset;
-        if ((v >= 0) && (v <= size))
+        // v -= srcbase;
+        if ((v >= 0) && (v <= srcsize))
         {
           // transfer key into range of destination object
-          lua_pushnumber(L, v + destoffset);
+          // lua_pushnumber(L, v + destoffset);
+          lua_pushnumber(L, v);
           lua_pushvalue(L, -2);
           lua_rawset(L, -5);
         }
@@ -363,11 +429,16 @@ static int luacwrap_get_closure(lua_State* L)
 {
   int offset;
   const char* typname;
+  luacwrap_Type* desc;
+  size_t len;
 
   offset = lua_tointeger(L, lua_upvalueindex(1));
-  typname = lua_tostring(L, lua_upvalueindex(2));
+  typname = lua_tolstring(L, lua_upvalueindex(2), &len);
 
-  return getEmbedded(L, 1, offset, typname);
+  // get descriptor from type name
+  desc = luacwrap_getdescriptor_byname(L, typname, len);
+
+  return getEmbedded(L, 1, offset, desc);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -380,11 +451,16 @@ static int luacwrap_set_closure(lua_State* L)
 {
   int offset;
   const char* typname;
+  luacwrap_Type* desc;
+  size_t len;
 
   offset = lua_tointeger(L, lua_upvalueindex(1));
-  typname = lua_tostring(L, lua_upvalueindex(2));
+  typname = lua_tolstring(L, lua_upvalueindex(2), &len);
 
-  return setEmbedded(L, offset, typname);
+  // get descriptor from type name
+  desc = luacwrap_getdescriptor_byname(L, typname, len);
+
+  return setEmbedded(L, offset, desc);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -415,7 +491,18 @@ static int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* 
         member = findMember(recdesc->members, stridx);
         if (member)
         {
-          return getEmbedded(L, ud, offset+member->offset, member->typname);
+          if (NULL == member->membertypedesc)
+          {
+            luacwrap_Type* desc;
+
+            // get descriptor from type name
+            desc = luacwrap_getdescriptor_byname(L, member->membertypename, -1);
+
+            // cache type descriptor
+            member->membertypedesc = desc;
+          }
+
+          return getEmbedded(L, ud, offset+member->memberoffset, member->membertypedesc);
         }
         else if (0 == strcmp(stridx, "__dup"))
         {
@@ -448,11 +535,22 @@ static int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* 
         luacwrap_ArrayType* arrdesc = (luacwrap_ArrayType*)desc;
         int idx = lua_tointeger(L, 2);
 
+        if (NULL == arrdesc->elemtypedesc)
+        {
+          luacwrap_Type* desc;
+
+          // get descriptor from type name
+          desc = luacwrap_getdescriptor_byname(L, arrdesc->elemtypename, -1);
+
+          // cache type descriptor
+          arrdesc->elemtypedesc = desc;
+        }
+
         if ((idx>0) && (idx <= arrdesc->elemcount))
         {
           int arroffs = (idx - 1) * arrdesc->elemsize;
 
-          return getEmbedded(L, ud, offset+arroffs, arrdesc->elemtype);
+          return getEmbedded(L, ud, offset+arroffs, arrdesc->elemtypedesc);
         }
         // else return nil
       }
@@ -539,7 +637,18 @@ static int luacwrap_type_newindex(lua_State* L, int offset, luacwrap_Type* desc)
         member = findMember(recdesc->members, stridx);
         if (member)
         {
-          return setEmbedded(L, offset+member->offset, member->typname);
+          if (NULL == member->membertypedesc)
+          {
+            luacwrap_Type* desc;
+
+            // get descriptor from type name
+            desc = luacwrap_getdescriptor_byname(L, member->membertypename, -1);
+
+            // cache type descriptor
+            member->membertypedesc = desc;
+          }
+
+          return setEmbedded(L, offset+member->memberoffset, member->membertypedesc);
         }
         else
         {
@@ -553,11 +662,22 @@ static int luacwrap_type_newindex(lua_State* L, int offset, luacwrap_Type* desc)
         luacwrap_ArrayType* arrdesc = (luacwrap_ArrayType*)desc;
         int idx = lua_tointeger(L, -2);
 
+        if (NULL == arrdesc->elemtypedesc)
+        {
+          luacwrap_Type* desc;
+
+          // get descriptor from type name
+          desc = luacwrap_getdescriptor_byname(L, arrdesc->elemtypename, -1);
+
+          // cache type descriptor
+          arrdesc->elemtypedesc = desc;
+        }
+
         if ((idx>0) && (idx <= arrdesc->elemcount))
         {
           int arroffs = (idx - 1) * arrdesc->elemsize;
 
-          return setEmbedded(L, offset+arroffs, arrdesc->elemtype);
+          return setEmbedded(L, offset+arroffs, arrdesc->elemtypedesc);
         }
         else
         {
@@ -619,16 +739,27 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
         lua_rawseti(L, -2, idx++);
 
         member = recdesc->members;
-        while (member->name)
+        while (member->membername)
         {
-          lua_pushstring(L, member->name);
+          if (NULL == member->membertypedesc)
+          {
+            luacwrap_Type* desc;
+
+            // get descriptor from type name
+            desc = luacwrap_getdescriptor_byname(L, member->membertypename, -1);
+
+            // cache type descriptor
+            member->membertypedesc = desc;
+          }
+
+          lua_pushstring(L, member->membername);
           lua_rawseti(L, -2, idx++);
 
           lua_pushstring(L, " = ");
           lua_rawseti(L, -2, idx++);
 
           lua_pushvalue(L, -3);                                           // function to be called (tostring)
-          getEmbedded(L, ud, offset + member->offset, member->typname);   // value to convert
+          getEmbedded(L, ud, offset + member->memberoffset, member->membertypedesc);   // value to convert
           if (lua_isnumber(L, -1))
           {
             lua_call(L, 1, 1);                                            // call tostring
@@ -679,11 +810,34 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
       {
         luacwrap_ArrayType* arrdesc = (luacwrap_ArrayType*)desc;
         
-        if ('$' == arrdesc->elemtype[0])
+        if (NULL == arrdesc->elemtypedesc)
         {
-          // if element type is an internal type convert directly to string
+          luacwrap_Type* desc;
+
+          // get descriptor from type name
+          desc = luacwrap_getdescriptor_byname(L, arrdesc->elemtypename, -1);
+
+          // cache type descriptor
+          arrdesc->elemtypedesc = desc;
+        }
+
+#ifdef _WINDOWS
+        // check for a WCHAR element type -> convert string from UCS2 to utf8
+        if (&regType_WCHAR.hdr == arrdesc->elemtypedesc)
+        {
+          const wchar_t* pobj;
+          pobj = (const wchar_t*)((const char*)lua_touserdata(L, ud) + offset);
+
+          // convert UCS2 to utf8 string
+          // todo:
+          LPCSTR result = lua_utf8fromwidestring(L, pobj, arrdesc->elemcount);
+        }
+        else 
+#endif
+        if (1 == arrdesc->elemsize)
+        {
+          // if element type is 1 byte long convert directly to string
           const char* pobj;
-          
           pobj = (const char*)lua_touserdata(L, ud) + offset;
         
           lua_pushlstring(L, pobj , arrdesc->elemsize * arrdesc->elemcount);
@@ -695,7 +849,7 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
           lua_getfield(L, -1, "tabletostring");
           lua_remove(L, -2);
           
-          getEmbedded(L, ud, offset, desc->name);   // value to convert
+          getEmbedded(L, ud, offset, desc);   // value to convert
           lua_call(L, 1, 1);
         }
 
@@ -1028,7 +1182,7 @@ static int pushEmbedded(lua_State* L, int ud, int offset, luacwrap_Type* desc)
   }
 
   pobj = (luacwrap_EmbeddedObject*)lua_newuserdata(L, sizeof(luacwrap_EmbeddedObject));
-  
+
   // get the outer object
   if (luacwrap_getouter(L, ud, &fromoffset))
   {
@@ -1075,14 +1229,11 @@ static int pushEmbedded(lua_State* L, int ud, int offset, luacwrap_Type* desc)
   Otherwise an embedded object reference is created and returned.
 
 *////////////////////////////////////////////////////////////////////////
-static int getEmbedded(lua_State* L, int ud, int offset, const char* typname)
+static int getEmbedded(lua_State* L, int ud, int offset, luacwrap_Type* desc)
 {
-  luacwrap_Type* desc;
-
   LUASTACK_SET(L);
 
   // get descriptor from type name
-  desc = luacwrap_getdescriptor_byname(L, typname, -1);
   switch (desc->typeclass)
   {
     case LUACWRAP_TC_BASIC:
@@ -1137,14 +1288,11 @@ static int getEmbedded(lua_State* L, int ud, int offset, const char* typname)
     - value                              -1
 
 *////////////////////////////////////////////////////////////////////////
-static int setEmbedded(lua_State* L, int offset, const char* typname)
+static int setEmbedded(lua_State* L, int offset, luacwrap_Type* desc)
 {
-  luacwrap_Type* desc;
-
   LUASTACK_SET(L);
 
   // get descriptor from string
-  desc = luacwrap_getdescriptor_byname(L, typname, -1);
   switch (desc->typeclass)
   {
     case LUACWRAP_TC_BASIC:
@@ -1395,12 +1543,16 @@ static int luacwrap_type_new(lua_State* L)
   desc = lua_touserdata(L, -1);
   lua_pop(L, 1);
 
+  // push default init parameter
+  int hassetparam = !lua_isnoneornil(L, 2);
+
   // if optional init parameter is a number use it to fill memory block
   initval = 0;
   if (lua_isnumber(L, 2))
   {
     // init memory with a given value
     initval = lua_tointeger(L, 2);
+    hassetparam = 0;
   }
 
   // determine size
@@ -1424,9 +1576,9 @@ static int luacwrap_type_new(lua_State* L)
   lua_pushlightuserdata(L, desc);
   lua_setfield(L, -2, "$desc");
   luacwrap_setenvironment(L, -2);
-  
-  // if optional init parameter present then call set()
-  if (!lua_isnoneornil(L, 2) && !lua_isnumber(L, 2))
+
+  // if optional init table parameter present then call set()
+  if (hassetparam)
   {
     lua_pushcfunction(L, luacwrap_type_set);
     lua_pushvalue(L, -2);         // push userdata
@@ -1493,6 +1645,28 @@ static int luacwrap_getouter(lua_State* L, int ud, int* offset)
 //////////////////////////////////////////////////////////////////////////
 /**
 
+  get the memory pointer to a given object
+
+*////////////////////////////////////////////////////////////////////////
+static void* luacwrap_getbaseptr(lua_State* L, int ud)
+{
+  int offset;
+  if (luacwrap_getouter(L, ud, &offset))
+  {
+    PBYTE baseptr = lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    return (baseptr + offset);
+  }
+  else
+  {
+    PBYTE baseptr = lua_touserdata(L, -1);
+    return baseptr;
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////
+/**
+
   check a userdata type descriptor against a given type descriptor
 
 *////////////////////////////////////////////////////////////////////////
@@ -1501,7 +1675,6 @@ void* luacwrap_checktype   ( lua_State*          L
                            , luacwrap_Type*      desc)
 {
   luacwrap_Type* uddesc;
-  int offset;
 
   uddesc = luacwrap_getdescriptor(L, ud);
   if (desc != uddesc)
@@ -1512,13 +1685,7 @@ void* luacwrap_checktype   ( lua_State*          L
   }
 
   // getting address depends on if this is a boxed or an embedded object
-  if (luacwrap_getouter(L, ud, &offset))
-  {
-    PBYTE baseptr = lua_touserdata(L, -1);
-    lua_pop(L, 1);
-    return (baseptr + offset);
-  }
-  return NULL;
+  return luacwrap_getbaseptr(L, ud);
 }
 
 
@@ -1534,7 +1701,7 @@ int luacwrap_pushtypedptr(lua_State* L, luacwrap_Type* desc, void* pObj)
   LUASTACK_SET(L);
 
   lua_pushlightuserdata(L, pObj);
-  result = getEmbedded(L, abs_index(L, -1), 0, desc->name);
+  result = getEmbedded(L, abs_index(L, -1), 0, desc);
   lua_remove(L, -2);
 
   LUASTACK_CLEAN(L, result);
@@ -1574,7 +1741,7 @@ static int luacwrap_type_attach(lua_State* L)
   {
     case LUA_TLIGHTUSERDATA:
       {
-        result = getEmbedded(L, 2, 0, desc->name);
+        result = getEmbedded(L, 2, 0, desc);
       }
       break;
     case LUA_TUSERDATA:
@@ -1586,7 +1753,7 @@ static int luacwrap_type_attach(lua_State* L)
     case LUA_TNUMBER:
       {
         lua_pushlightuserdata(L, (void*)lua_tointeger(L, 2));
-        result = getEmbedded(L, abs_index(L, -1), 0, desc->name);
+        result = getEmbedded(L, abs_index(L, -1), 0, desc);
         lua_remove(L, -2);
       }
       break;
@@ -1731,30 +1898,68 @@ static int luacwrap_type_set(lua_State* L)
         break;
       case LUACWRAP_TC_ARRAY :
         {
-          // assign string to array
-          const char* src;
-          size_t srclen, arrsize;
-          
-          int   destoffset;
           PBYTE destbase;
 
           luacwrap_ArrayType* arrdesc = (luacwrap_ArrayType*)desc;
           
-          luacwrap_getouter(L, 1, &destoffset);
-          destbase  = lua_touserdata(L, -1);
+          if (NULL == arrdesc->elemtypedesc)
+          {
+            luacwrap_Type* desc;
 
-          src = lua_tolstring(L, 2, &srclen);
+            // get descriptor from type name
+            desc = luacwrap_getdescriptor_byname(L, arrdesc->elemtypename, -1);
 
-          arrsize = arrdesc->elemsize * arrdesc->elemcount;
-          
-          // limit size to copy
-          if (arrsize < srclen)
-            arrsize = srclen;
+            // cache type descriptor
+            arrdesc->elemtypedesc = desc;
+          }
 
-          // copy binary content
-          memcpy( destbase + destoffset
-                , src
-                , arrsize);
+          destbase = luacwrap_getbaseptr(L, 1);
+
+#ifdef _WINDOWS
+          // check for a WCHAR element type -> convert string from utf8 to UCS2
+          if (&regType_WCHAR.hdr == arrdesc->elemtypedesc)
+          {
+            size_t destlen = 0;
+
+            // convert utf8 to UCS2 string
+            LPCWSTR result = lua_widestringfromutf8(L, 2, &destlen);
+
+            wchar_t* pobj = (wchar_t*)(destbase);
+
+            // copy binary content
+            memcpy(pobj
+              , result
+              , min(destlen, arrdesc->elemcount) * sizeof(wchar_t) );
+
+            // pop converted string
+            lua_pop(L, 1);
+          }
+          else 
+#endif
+          if (1 == arrdesc->elemsize)
+          {
+            // assign string to array
+            const char* src;
+            size_t srclen, arrsize;
+            src = lua_tolstring(L, 2, &srclen);
+
+            arrsize = arrdesc->elemsize * arrdesc->elemcount;
+
+            // limit size to copy
+            if (arrsize < srclen)
+              arrsize = srclen;
+
+            // copy binary content
+            memcpy( destbase
+                  , src
+                  , min(srclen, arrsize));
+          }
+          else
+          {
+            // you should not get here
+            assert(0);
+            luaL_error(L, "Assigning string to incompatiple array is not supported");
+          }
         }
         break;
       case LUACWRAP_TC_BUFFER:
@@ -1779,28 +1984,20 @@ static int luacwrap_type_set(lua_State* L)
     // check if same type
     if (desc == descfrom)
     {
-      size_t size;
-      int srcoffset, destoffset;
       PBYTE srcbase, destbase;
 
-      size = luacwrap_type_size(desc);
+      destbase = luacwrap_getbaseptr(L, 1);
+      srcbase  = luacwrap_getbaseptr(L, 2);
 
-      luacwrap_getouter(L, 1, &destoffset);
-      luacwrap_getouter(L, 2, &srcoffset);
-
-      srcbase  = lua_touserdata(L, -1);
-      destbase = lua_touserdata(L, -2);
+      int destsize = luacwrap_type_size(desc);
 
       // copy binary content
-      memcpy( destbase + destoffset
-            , srcbase  + srcoffset
-            , size);
+      memcpy( destbase
+            , srcbase
+            , destsize);
 
       // copy object references
-      luacwrap_mobj_copy_references(L, destoffset, srcoffset, size);
-
-      // pop the outer objects
-      lua_pop(L, 2);
+      luacwrap_mobj_copy_references(L);
     }
     else
     {
@@ -2213,9 +2410,11 @@ static int luacwrap_registerstruct( lua_State*       L)
     lua_rawgeti(L, -3, 3);
     membertypename = luacwrap_storestring(L, abs_index(L, -1), "non empty string expected for member type name on index #%d", idx);
 
-    member->name = membername;
-    member->offset = memberoffset;
-    member->typname = membertypename;
+    member->membername = membername;
+    member->memberoffset = memberoffset;
+
+    member->membertypename = membertypename;
+    member->membertypedesc = NULL;               // may cache descriptor later
 
     lua_pop(L, 4);
     ++member;
@@ -2223,9 +2422,9 @@ static int luacwrap_registerstruct( lua_State*       L)
   }
 
   // clear last entry
-  member->name = NULL;
-  member->offset = 0;
-  member->typname = NULL;
+  member->membername = NULL;
+  member->memberoffset = 0;
+  member->membertypename = NULL;
 
   return luacwrap_create_dyntype(L, &recdesc->hdr);
 }
@@ -2282,7 +2481,8 @@ static int luacwrap_registerarray( lua_State*       L)
   arrdesc->hdr.name = name;
   arrdesc->elemcount = elemcount;
   arrdesc->elemsize = luacwrap_type_size(elemtype);
-  arrdesc->elemtype = elemtypename;
+  arrdesc->elemtypename = elemtype->name;
+  arrdesc->elemtypedesc = elemtype;
 
   return luacwrap_create_dyntype(L, &arrdesc->hdr);
 }
@@ -2395,9 +2595,11 @@ static luacwrap_cinterface g_cinterface =
 
   luacwrap_setenvironment,
   luacwrap_getenvironment,
+
   luacwrap_mobj_get_reference,
   luacwrap_mobj_set_reference,
-  luacwrap_mobj_remove_reference
+  luacwrap_mobj_remove_reference,
+  luacwrap_mobj_copy_references
 };
   
 //////////////////////////////////////////////////////////////////////////
