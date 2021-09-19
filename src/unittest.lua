@@ -1,3 +1,11 @@
+--////////////////////////////////////////////////////////////////////////
+--
+-- LuaCwrap - Lua <-> C 
+-- Copyright (C) 2011-2021 Klaus Oberhofer. See Copyright Notice in luacwrap.h
+--
+-- unit tests for LuaCwrap
+--
+--////////////////////////////////////////////////////////////////////////
 lu = require("luaunit")
 testluacwrap = require("testluacwrap")
 luacwrap = require("luacwrap")

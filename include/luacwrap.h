@@ -1,11 +1,13 @@
 //////////////////////////////////////////////////////////////////////////
-// LuaCwrap - lua <-> C 
+//
+// LuaCwrap - Lua <-> C 
+// Copyright (C) 2011-2021 Klaus Oberhofer. See Copyright Notice in luacwrap.h
 //
 //  LuaCwrap is licensed under the terms of the MIT license reproduced below.
 //  This means that LuaCwrap is free software and can be used for both academic
 //  and commercial purposes at absolutely no cost.
 //
-//  Copyright (C) 2011 Klaus Oberhofer
+//  Copyright (C) 2011-2021 Klaus Oberhofer
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
