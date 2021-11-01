@@ -1,4 +1,4 @@
-![build status](https://github.com/{USERNAME}/{REPO}/workflows/{WORKFLOW}/badge.svg)
+[![test](https://github.com/oberhofer/luacwrap/workflows/test/badge.svg)](https://github.com/oberhofer/luacwrap?query=workflow%3Atest)
 [![Build status](https://ci.appveyor.com/api/projects/status/github/oberhofer/luacwrap?svg=true&branch=master)](https://ci.appveyor.com/project/oberhofer/luacwrap/branch/master)
 
 # Introduction
