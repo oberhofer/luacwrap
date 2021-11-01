@@ -376,25 +376,17 @@ typedef int (*luacwrap_mobj_set_reference_t     )(lua_State *L, int ud, int valu
 typedef int (*luacwrap_mobj_remove_reference_t  )(lua_State *L, int ud, int offset);
 typedef int (*luacwrap_mobj_copy_references_t   )(lua_State* L);
 
+//
+// get base pointer of given object
+//
+typedef void* (*luacwrap_mobj_getbaseptr_t      )(lua_State* L, int ud);
+
 
 #define LUACWARP_CINTERFACE_VERSION  2
 
 #define LUACWARP_CINTERFACE_NAME     "c_interface"
 
 typedef struct 
-{
-  int version;
-  luacwrap_registerbasictype_t  registerbasictype;
-  luacwrap_registertype_t       registertype;
-  luacwrap_checktype_t          checktype;
-  luacwrap_pushtypedptr_t       pushtypedptr;
-  luacwrap_pushboxedobj_t       pushboxedobj;
-  luacwrap_createreference_t    createreference;
-  luacwrap_pushreference_t      pushreference;
-  luacwrap_defuintconstants_t   defuintconstants;
-} luacwrap_cinterface_v1;
-
-typedef struct
 {
   int version;
   luacwrap_registerbasictype_t      registerbasictype;
@@ -405,6 +397,22 @@ typedef struct
   luacwrap_createreference_t        createreference;
   luacwrap_pushreference_t          pushreference;
   luacwrap_defuintconstants_t       defuintconstants;
+} luacwrap_cinterface_v1;
+
+typedef struct
+{
+  int version;
+
+  // v1
+  luacwrap_registerbasictype_t      registerbasictype;
+  luacwrap_registertype_t           registertype;
+  luacwrap_checktype_t              checktype;
+  luacwrap_pushtypedptr_t           pushtypedptr;
+  luacwrap_pushboxedobj_t           pushboxedobj;
+  luacwrap_createreference_t        createreference;
+  luacwrap_pushreference_t          pushreference;
+  luacwrap_defuintconstants_t       defuintconstants;
+
   // v2
   luacwrap_getdescriptor_t          getdescriptor;
   luacwrap_getdescriptor_byname_t   getdescriptorbyname;
@@ -416,5 +424,7 @@ typedef struct
   luacwrap_mobj_set_reference_t     mobjsetreference;
   luacwrap_mobj_remove_reference_t  mobjremovereference;
   luacwrap_mobj_copy_references_t   mobjcopyreferences;
+
+  luacwrap_mobj_getbaseptr_t        mobjgetbaseptr;
 } luacwrap_cinterface;
 

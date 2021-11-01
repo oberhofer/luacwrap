@@ -21,9 +21,6 @@
 // _M.$buftypes to store references
 extern const char* g_keyRefTable;
 
-// $WCHAR type descriptor
-luacwrap_BasicType regType_WCHAR;
-
 //
 // access global module table
 //
@@ -70,6 +67,11 @@ int luacwrap_mobj_set_reference     (lua_State *L, int ud, int value, int offset
 int luacwrap_mobj_get_reference     (lua_State *L, int ud, int offset);
 int luacwrap_mobj_remove_reference  (lua_State *L, int ud, int offset);
 int luacwrap_mobj_copy_references   (lua_State* L);
+
+//
+// get base pointer of given type
+//
+void* luacwrap_mobj_getbaseptr      (lua_State* L, int ud);
 
 //
 // access to global reference table

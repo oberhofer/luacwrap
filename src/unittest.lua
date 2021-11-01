@@ -48,8 +48,8 @@ function TestTESTSTRUCT:testCreateTESTSTRUCT()
 
     -- semantic of attach()
     local attached = TESTSTRUCT:attach(struct)
-    assertEquals(attached, struct)
-    assertEquals(struct.__ptr, attached.__ptr)
+    lu.assertEquals(attached, struct)
+    lu.assertEquals(struct.__ptr, attached.__ptr)
 
     -- check metatable
     assert(nil ~= getmetatable(struct))
@@ -91,7 +91,6 @@ function TestTESTSTRUCT:testAssignment()
     struct.i32 = 66
     struct.ptr = "hello"
     struct.chararray = "hello"
-    struct.wchararray = "world"
     struct.intarray[1] = 10
     struct.intarray[2] = 20
     struct.intarray[3] = 30
@@ -106,7 +105,6 @@ function TestTESTSTRUCT:testAssignment()
     assert(struct.i32 == 66)
     assert(struct.ptr == "hello")
     assert(tostring(struct.chararray) == "hello\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
-    assert(tostring(struct.wchararray) == "world\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
     assert(struct.intarray[1] == 10)
     assert(struct.intarray[2] == 20)
     assert(struct.intarray[3] == 30)
@@ -150,7 +148,6 @@ function TestTESTSTRUCT:testTableAssignment()
       i32 = 96,
       ptr = "hello",
       chararray = "hello",
-      wchararray = "world",
       intarray = { 19,
              29,
              39,
@@ -166,7 +163,6 @@ function TestTESTSTRUCT:testTableAssignment()
     assert(struct.i32 == 96)
     assert(struct.ptr == "hello")
     assert(tostring(struct.chararray) == "hello\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
-    assert(tostring(struct.wchararray) == "world\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
     assert(struct.intarray[1] == 19)
     assert(struct.intarray[2] == 29)
     assert(struct.intarray[3] == 39)
@@ -188,7 +184,6 @@ function TestTESTSTRUCT:testNewWithTableAssignment()
       i32 = 96,
       ptr = "hello",
       chararray = "hello",
-      wchararray = "world",
       intarray = { 19,
              29,
              39,
@@ -204,7 +199,6 @@ function TestTESTSTRUCT:testNewWithTableAssignment()
     assert(struct.i32 == 96)
     assert(struct.ptr == "hello")
     assert(tostring(struct.chararray) == "hello\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
-    assert(tostring(struct.wchararray) == "world\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
     assert(struct.intarray[1] == 19)
     assert(struct.intarray[2] == 29)
     assert(struct.intarray[3] == 39)
@@ -223,7 +217,6 @@ function TestTESTSTRUCT:testNewWithTableAssignment()
     assert(struct2.i32 == 96)
     assert(struct2.ptr == "hello")
     assert(tostring(struct2.chararray) == "hello\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
-    assert(tostring(struct.wchararray) == "world\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
     assert(struct2.intarray[1] == 19)
     assert(struct2.intarray[2] == 29)
     assert(struct2.intarray[3] == 39)
@@ -243,7 +236,6 @@ function TestTESTSTRUCT:testNewWithTableAssignment()
     assert(struct3.i32 == 96)
     assert(struct3.ptr == "hello")
     assert(tostring(struct3.chararray) == "hello\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
-    assert(tostring(struct.wchararray) == "world\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
     assert(struct3.intarray[1] == 19)
     assert(struct3.intarray[2] == 29)
     assert(struct3.intarray[3] == 39)

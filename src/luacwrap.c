@@ -10,10 +10,6 @@
 
 */////////////////////////////////////////////////////////////////////////
 
-#ifdef _WINDOWS
-#include <windows.h>
-#endif
-
 #include <stdlib.h>
 #include <string.h>
 
@@ -65,52 +61,6 @@ typedef int (*GET_OBJECTOUTER)(lua_State* L, int ud, int* offset);
 
 // key under which the getouter function is stored
 const char* g_keyGetOuter = "getouter";
-
-#ifdef _WINDOWS
-//////////////////////////////////////////////////////////////////////////
-/**
-
-  convert UTF-8 encoded string to UCS2 encoded string
-
-*/////////////////////////////////////////////////////////////////////////
-LPCWSTR lua_widestringfromutf8(lua_State* L, int idx, size_t* destlen)
-{
-  size_t sourcelen = 0;
-  LPCSTR source = luaL_checklstring(L, idx, &sourcelen);
-
-  // convert UTF-8 text to UTF-16
-  int destsize = MultiByteToWideChar(CP_UTF8, 0, source, sourcelen, 0, 0);
-  LPWSTR dest = _alloca(destsize * sizeof(WCHAR));
-  MultiByteToWideChar(CP_UTF8, 0, source, sourcelen, dest, destsize);
-
-  lua_pushlstring(L, (const char*)dest, destsize * sizeof(WCHAR));
-
-  if (destlen)
-  {
-    *destlen = destsize;
-  }
-
-  return (LPCWSTR)(lua_tostring(L, -1));
-}
-
-//////////////////////////////////////////////////////////////////////////
-/**
-
-  convert UCS2 encoded string to UTF-8 encoded string
-
-*/////////////////////////////////////////////////////////////////////////
-LPCSTR lua_utf8fromwidestring(lua_State* L, LPCWSTR source, size_t sourcelen)
-{
-  // convert UCS2 text to UTF-8
-  int destsize = WideCharToMultiByte(CP_UTF8, 0, source, sourcelen, 0, 0, NULL, NULL);
-  LPSTR dest = _alloca(destsize * sizeof(CHAR));
-  WideCharToMultiByte(CP_UTF8, 0, source, sourcelen, dest, destsize, NULL, NULL);
-
-  lua_pushlstring(L, dest, destsize);
-
-  return (LPCSTR)(lua_tostring(L, -1));
-}
-#endif
 
 //////////////////////////////////////////////////////////////////////////
 /**
@@ -225,7 +175,7 @@ int luacwrap_mobj_get_reference(lua_State *L, int ud, int offset)
     }
     else
     {
-      // printf("not found: %i\n", offset);
+      // no reference stored -> return 0
     }
 
     lua_pop(L, 2);
@@ -473,6 +423,7 @@ static int luacwrap_set_closure(lua_State* L)
 *////////////////////////////////////////////////////////////////////////
 static int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* desc)
 {
+  size_t len;
   const char* stridx;
 
   LUASTACK_SET(L);
@@ -486,7 +437,7 @@ static int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* 
         luacwrap_RecordMember* member;
         luacwrap_RecordType* recdesc = (luacwrap_RecordType*)desc;
 
-        stridx = lua_tostring(L, 2);
+        stridx = lua_tolstring(L, 2, &len);
 
         member = findMember(recdesc->members, stridx);
         if (member)
@@ -559,7 +510,7 @@ static int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* 
     case LUACWRAP_TC_BUFFER:
       {
         // special handling for get/set
-        stridx = lua_tostring(L, 2);
+        stridx = lua_tolstring(L, 2, &len);
         if (0 == strcmp("get", stridx))
         {
           lua_pushinteger(L, offset);
@@ -588,7 +539,7 @@ static int luacwrap_type_index(lua_State* L, int ud, int offset, luacwrap_Type* 
 
 #ifdef LUACWRAP_DEBUG_PTR
   // special handling for __ptr
-  stridx = lua_tostring(L, 2);
+  stridx = lua_tolstring(L, 2, &len);
   if (0 == strcmp("__ptr", stridx))
   {
     PBYTE pobj;
@@ -821,19 +772,8 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
           arrdesc->elemtypedesc = desc;
         }
 
-#ifdef _WINDOWS
-        // check for a WCHAR element type -> convert string from UCS2 to utf8
-        if (&regType_WCHAR.hdr == arrdesc->elemtypedesc)
-        {
-          const wchar_t* pobj;
-          pobj = (const wchar_t*)((const char*)lua_touserdata(L, ud) + offset);
-
-          // convert UCS2 to utf8 string
-          // todo:
-          LPCSTR result = lua_utf8fromwidestring(L, pobj, arrdesc->elemcount);
-        }
-        else 
-#endif
+        // maybe better use:
+        //  if (&regType_char.hdr == arrdesc->elemtypedesc)
         if (1 == arrdesc->elemsize)
         {
           // if element type is 1 byte long convert directly to string
@@ -873,6 +813,7 @@ static int luacwrap_type_tostring(lua_State* L, int ud, int offset, luacwrap_Typ
       break;
     default:
       {
+        luaL_argerror(L, ud, "tostring not supported for this type");
         assert(0);
       }
   }
@@ -1648,7 +1589,7 @@ static int luacwrap_getouter(lua_State* L, int ud, int* offset)
   get the memory pointer to a given object
 
 *////////////////////////////////////////////////////////////////////////
-static void* luacwrap_getbaseptr(lua_State* L, int ud)
+void* luacwrap_mobj_getbaseptr(lua_State* L, int ud)
 {
   int offset;
   if (luacwrap_getouter(L, ud, &offset))
@@ -1685,7 +1626,7 @@ void* luacwrap_checktype   ( lua_State*          L
   }
 
   // getting address depends on if this is a boxed or an embedded object
-  return luacwrap_getbaseptr(L, ud);
+  return luacwrap_mobj_getbaseptr(L, ud);
 }
 
 
@@ -1885,6 +1826,7 @@ static int luacwrap_type_set(lua_State* L)
         {
           assert(0);
         }
+        break;
     }
   }
   else if (lua_isstring(L, 2))
@@ -1913,53 +1855,23 @@ static int luacwrap_type_set(lua_State* L)
             arrdesc->elemtypedesc = desc;
           }
 
-          destbase = luacwrap_getbaseptr(L, 1);
+          destbase = luacwrap_mobj_getbaseptr(L, 1);
 
-#ifdef _WINDOWS
-          // check for a WCHAR element type -> convert string from utf8 to UCS2
-          if (&regType_WCHAR.hdr == arrdesc->elemtypedesc)
-          {
-            size_t destlen = 0;
+          // assign string to char array
+          const char* src;
+          size_t srclen, arrsize;
+          src = lua_tolstring(L, 2, &srclen);
 
-            // convert utf8 to UCS2 string
-            LPCWSTR result = lua_widestringfromutf8(L, 2, &destlen);
+          arrsize = arrdesc->elemsize * arrdesc->elemcount;
 
-            wchar_t* pobj = (wchar_t*)(destbase);
+          // limit size to copy
+          if (arrsize < srclen)
+            arrsize = srclen;
 
-            // copy binary content
-            memcpy(pobj
-              , result
-              , min(destlen, arrdesc->elemcount) * sizeof(wchar_t) );
-
-            // pop converted string
-            lua_pop(L, 1);
-          }
-          else 
-#endif
-          if (1 == arrdesc->elemsize)
-          {
-            // assign string to array
-            const char* src;
-            size_t srclen, arrsize;
-            src = lua_tolstring(L, 2, &srclen);
-
-            arrsize = arrdesc->elemsize * arrdesc->elemcount;
-
-            // limit size to copy
-            if (arrsize < srclen)
-              arrsize = srclen;
-
-            // copy binary content
-            memcpy( destbase
-                  , src
-                  , min(srclen, arrsize));
-          }
-          else
-          {
-            // you should not get here
-            assert(0);
-            luaL_error(L, "Assigning string to incompatiple array is not supported");
-          }
+          // copy binary content
+          memcpy( destbase
+                , src
+                , min(srclen, arrsize));
         }
         break;
       case LUACWRAP_TC_BUFFER:
@@ -1974,6 +1886,7 @@ static int luacwrap_type_set(lua_State* L)
         {
           assert(0);
         }
+        break;
     }
   }
   else if (!lua_isnil(L, 2))
@@ -1986,8 +1899,8 @@ static int luacwrap_type_set(lua_State* L)
     {
       PBYTE srcbase, destbase;
 
-      destbase = luacwrap_getbaseptr(L, 1);
-      srcbase  = luacwrap_getbaseptr(L, 2);
+      destbase = luacwrap_mobj_getbaseptr(L, 1);
+      srcbase  = luacwrap_mobj_getbaseptr(L, 2);
 
       int destsize = luacwrap_type_size(desc);
 
@@ -2599,7 +2512,9 @@ static luacwrap_cinterface g_cinterface =
   luacwrap_mobj_get_reference,
   luacwrap_mobj_set_reference,
   luacwrap_mobj_remove_reference,
-  luacwrap_mobj_copy_references
+  luacwrap_mobj_copy_references,
+
+  luacwrap_mobj_getbaseptr,
 };
   
 //////////////////////////////////////////////////////////////////////////

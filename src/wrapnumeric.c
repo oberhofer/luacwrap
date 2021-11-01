@@ -68,9 +68,6 @@ WRAPPER(DOUBLE, double, "$dbl")
 // char type
 WRAPPER(char, char, "$char")
 
-// wchar type
-WRAPPER(WCHAR, wchar_t, "$wchar_t")
-
 //////////////////////////////////////////////////////////////////////////
 /**
 
@@ -98,14 +95,8 @@ int luacwrap_registerNumericTypes(lua_State* L)
   luacwrap_registerbasictype(L, &regType_FLOAT);
   luacwrap_registerbasictype(L, &regType_DOUBLE);
 
-  // wchar type
-  luacwrap_registerbasictype(L, &regType_WCHAR);
-
   // char type
   luacwrap_registerbasictype(L, &regType_char);
-
-  // aliases
-  // luacwrap_registeralias(L, "wchar_t", "$wchar");
 
   LUASTACK_CLEAN(L, 0);
   return 0;
