@@ -87,4 +87,4 @@
 * extend V2 C interface by luacwrap_mobj_copy_references_t function ptr
 * fix LUACWRAP_DEFINEARRAY macro
 * array and struct type descriptors: cache type descriptors of membertypes
-* handle UCS2 encoded arrays on windows (with automatic conversion to/from utf8 encoded strings)
+
