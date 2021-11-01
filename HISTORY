@@ -84,6 +84,7 @@
 * adjust makefile to changed project structure
 * update license info in file headers
 * add .gitignore file
+* remove travis.yml and switch to github actions
 * extend V2 C interface by luacwrap_mobj_copy_references_t function ptr
 * fix LUACWRAP_DEFINEARRAY macro
 * array and struct type descriptors: cache type descriptors of membertypes
