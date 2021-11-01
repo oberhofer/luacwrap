@@ -30,6 +30,7 @@ before_build:
   - call env\bin\activate
 
 build_script:
+  - luarocks install luaunit
   - luarocks make luacwrap-scm-1.rockspec
 
 test_script:
